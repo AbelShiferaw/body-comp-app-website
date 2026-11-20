@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens: Direction A "Graphite + Ice" (app screens) plus the
+ * hologram stage from Direction B (avatar hero). Values mirror the app's
+ * AppTokens in body-comp-app; change them here, never at call sites.
+ */
+:root {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-high: #ebedf0;
+  --outline: #d9dce1;
+  --ink: #111317;
+  --ink-2: #555b66;
+  --ink-3: #646a75;
+  --lean: #1f6fc5;
+  --fat: #b34e0c;
+  --on-lean: #ffffff;
+
+  /* The hologram stage stays dark in both themes, like a game viewport. */
+  --holo-bg: #070a12;
+  --holo-cyan: #3ef0ff;
+  --holo-amber: #ffb020;
+  --holo-ink: #e8fbff;
+
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0b0c0e;
+    --surface: #15171b;
+    --surface-high: #1e2126;
+    --outline: #2a2e35;
+    --ink: #f2f3f5;
+    --ink-2: #a3a9b4;
+    --ink-3: #7d8491;
+    --lean: #7cc4ff;
+    --fat: #ff8a3d;
+    --on-lean: #0b0c0e;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-high: var(--surface-high);
+  --color-outline: var(--outline);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-lean: var(--lean);
+  --color-fat: var(--fat);
+  --color-on-lean: var(--on-lean);
+  --color-holo-bg: var(--holo-bg);
+  --color-holo-cyan: var(--holo-cyan);
+  --color-holo-amber: var(--holo-amber);
+  --color-holo-ink: var(--holo-ink);
+
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-archivo);
+  --font-hud: var(--font-chakra);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.font-display {
+  font-stretch: 125%;
+}
+
+/* Scan beam that sweeps the hologram avatar. */
+@keyframes scan {
+  0% {
+    transform: translateY(-10%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  90% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(1000%);
+    opacity: 0;
+  }
+}
+
+.scan-beam {
+  animation: scan 4.5s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  .scan-beam {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Long-form legal pages. */
+.legal h2 {
+  margin-top: 2.5rem;
+  margin-bottom: 0.75rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--ink);
+}
+.legal h3 {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+  color: var(--ink);
+}
+.legal p,
+.legal li {
+  color: var(--ink-2);
+  line-height: 1.7;
+}
+.legal p + p {
+  margin-top: 0.75rem;
+}
+.legal ul {
+  margin-top: 0.5rem;
+  list-style: disc;
+  padding-left: 1.25rem;
+}
+.legal li + li {
+  margin-top: 0.35rem;
+}
+.legal a {
+  color: var(--lean);
+  text-decoration: underline;
+}
+.legal strong {
+  color: var(--ink);
+}
