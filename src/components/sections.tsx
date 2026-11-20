@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ScanCompare } from "./scan-compare";
+import { BodyViews } from "./body-views";
 
 function SectionHeading({
   eyebrow,
@@ -34,8 +34,8 @@ const STEPS = [
     body: "Sign in to your DEXA provider in the app and your scans sync straight to your phone. BodySpec comes first; more providers and PDF upload follow.",
   },
   {
-    title: "Watch your avatar change",
-    body: "Your 3D body is shaped by your own numbers. Scan again in a few months and see the difference: on the body, not in a spreadsheet.",
+    title: "Watch your body change",
+    body: "Your 3D body is built from your own numbers. Scan again in a few months and see what changed, region by region.",
   },
 ];
 
@@ -65,12 +65,12 @@ export function HowItWorks() {
 const FEATURES: { title: string; body: string; tone: "lean" | "fat" }[] = [
   {
     title: "Fat where you actually carry it",
-    body: "Regional fat from your scan shapes the avatar. High belly fat shows on the belly, not spread evenly over a generic body.",
+    body: "Regional fat from your scan shows on the body. High belly fat shows on the belly, not averaged into one number.",
     tone: "fat",
   },
   {
-    title: "Muscle that grows with you",
-    body: "Lean mass per region drives visible muscle. Put two kilos on and watch your arms, chest and legs fill out.",
+    title: "Lean mass, region by region",
+    body: "See lean mass for each arm, each leg and your trunk, and exactly where you added it since your last scan.",
     tone: "lean",
   },
   {
@@ -80,7 +80,7 @@ const FEATURES: { title: string; body: string; tone: "lean" | "fat" }[] = [
   },
   {
     title: "Compare any two scans",
-    body: "Scrub between scans and see change colored by meaning: ice for muscle gained and fat lost, ember for the opposite.",
+    body: "Scrub between scans and see change colored by meaning: blue for fat lost, orange for fat gained, and a lean view for where you built.",
     tone: "lean",
   },
   {
@@ -116,7 +116,7 @@ export function Features() {
         ))}
       </ul>
       <div className="mt-20">
-        <ScanCompare />
+        <BodyViews />
       </div>
     </section>
   );

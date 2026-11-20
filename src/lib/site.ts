@@ -6,7 +6,7 @@ export const site = {
   name: "Obsessed",
   tagline: "3D body composition tracking",
   description:
-    "Obsessed turns your DEXA scans into a 3D avatar with real muscle and fat, region by region. Scan again and watch your body change.",
+    "Obsessed turns your DEXA scans into a 3D body that shows your fat and lean mass, region by region. Scan again and see what changed.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "[CONTACT EMAIL]",
   legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY ?? "[LEGAL ENTITY]",

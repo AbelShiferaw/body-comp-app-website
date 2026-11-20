@@ -1,8 +1,7 @@
 @import "tailwindcss";
 
 /*
- * Design tokens: Direction A "Graphite + Ice" (app screens) plus the
- * hologram stage from Direction B (avatar hero). Values mirror the app's
+ * Design tokens: Direction A "Graphite + Ice". Values mirror the app's
  * AppTokens in body-comp-app; change them here, never at call sites.
  */
 :root {
@@ -17,11 +16,13 @@
   --fat: #b34e0c;
   --on-lean: #ffffff;
 
-  /* The hologram stage stays dark in both themes, like a game viewport. */
-  --holo-bg: #070a12;
-  --holo-cyan: #3ef0ff;
-  --holo-amber: #ffb020;
-  --holo-ink: #e8fbff;
+  /* Legend colors of the app's 3D Fat and Change views (same in both themes). */
+  --map-fat-high: #d9541e;
+  --map-fat-mid: #f5bc5c;
+  --map-fat-low: #7cc4ff;
+  --map-gain: #f08a2c;
+  --map-none: #b9bcc2;
+  --map-loss: #2f7fdc;
 
   color-scheme: light;
 }
@@ -53,10 +54,6 @@
   --color-lean: var(--lean);
   --color-fat: var(--fat);
   --color-on-lean: var(--on-lean);
-  --color-holo-bg: var(--holo-bg);
-  --color-holo-cyan: var(--holo-cyan);
-  --color-holo-amber: var(--holo-amber);
-  --color-holo-ink: var(--holo-ink);
 
   --font-sans: var(--font-inter);
   --font-display: var(--font-archivo);
@@ -76,35 +73,9 @@ body {
   font-stretch: 125%;
 }
 
-/* Scan beam that sweeps the hologram avatar. */
-@keyframes scan {
-  0% {
-    transform: translateY(-10%);
-    opacity: 0;
-  }
-  10% {
-    opacity: 1;
-  }
-  90% {
-    opacity: 1;
-  }
-  100% {
-    transform: translateY(1000%);
-    opacity: 0;
-  }
-}
-
-.scan-beam {
-  animation: scan 4.5s ease-in-out infinite;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;
-  }
-  .scan-beam {
-    animation: none;
-    opacity: 0;
   }
 }
 

@@ -4,10 +4,10 @@ Marketing site for **Obsessed** (working name), the app that turns DEXA scans in
 
 ## Pages
 
-- `/`: hero (hologram avatar), how it works, features, before/after scan slider, privacy promise, FAQ, beta waitlist.
+- `/`: hero (the app's Studio 3D body with level and stats), how it works, features, Body/Fat/Change view switcher, privacy promise, FAQ, beta waitlist.
 - `/privacy`, `/terms`: **drafts for legal review**, shown with a draft banner and `noindex` until a lawyer signs off.
 
-Light and dark mode follow the visitor's system setting, using the app's Direction A tokens (`src/app/globals.css`). The hologram stage stays dark in both.
+Light and dark mode follow the visitor's system setting, using the app's Direction A tokens (`src/app/globals.css`).
 
 ## Run it
 

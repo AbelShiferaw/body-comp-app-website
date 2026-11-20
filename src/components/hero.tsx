@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { HologramStage } from "./hologram-stage";
+import { BodyCard } from "./body-card";
 
 export function Hero() {
   return (
@@ -13,9 +13,9 @@ export function Hero() {
           See your DEXA scan come to life.
         </h1>
         <p className="mt-6 max-w-xl text-lg leading-relaxed text-ink-2">
-          Obsessed turns your DEXA results into a 3D avatar with real muscle and real fat, region by
-          region. Scan again and watch it change: fat comes off the belly, muscle fills out the
-          arms, and every scan levels you up.
+          Obsessed turns your DEXA results into a 3D body you can explore, region by region. See
+          where you carry fat, where you&apos;ve added lean mass, and how it all changed since your
+          last scan. Every scan levels you up.
         </p>
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
@@ -32,7 +32,7 @@ export function Hero() {
           Syncs your scans from BodySpec first, with more DEXA providers to follow.
         </p>
       </div>
-      <HologramStage />
+      <BodyCard />
     </section>
   );
 }
