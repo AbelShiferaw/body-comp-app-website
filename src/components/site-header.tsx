@@ -21,7 +21,7 @@ export function SiteHeader() {
             href="/#waitlist"
             className="rounded-full bg-lean px-4 py-2 font-semibold text-on-lean hover:opacity-90"
           >
-            Join the beta
+            Get the app
           </Link>
         </nav>
       </div>

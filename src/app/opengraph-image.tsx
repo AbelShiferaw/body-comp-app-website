@@ -25,10 +25,10 @@ export default function OpengraphImage() {
           {site.name.toUpperCase()}
         </div>
         <div style={{ fontSize: 76, fontWeight: 800, marginTop: 24, lineHeight: 1.05 }}>
-          See your DEXA scan come to life.
+          Your DEXA scan, in 3D, in your pocket.
         </div>
         <div style={{ fontSize: 32, marginTop: 28, color: "#a3a9b4" }}>
-          Your DEXA scan as a 3D body: fat and lean, region by region.
+          An iPhone and Android app for 3D body composition from DEXA.
         </div>
       </div>
     ),

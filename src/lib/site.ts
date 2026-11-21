@@ -4,9 +4,9 @@
  */
 export const site = {
   name: "Obsessed",
-  tagline: "3D body composition tracking",
+  tagline: "3D body composition app",
   description:
-    "Obsessed turns your DEXA scans into a 3D body that shows your fat and lean mass, region by region. Scan again and see what changed.",
+    "Obsessed is an iPhone and Android app that turns your DEXA scans into a 3D body showing your fat and lean mass, region by region. Scan again and see what changed.",
   url: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000",
   contactEmail: process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "[CONTACT EMAIL]",
   legalEntity: process.env.NEXT_PUBLIC_LEGAL_ENTITY ?? "[LEGAL ENTITY]",
