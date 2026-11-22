@@ -1,5 +1,7 @@
 "use client";
 
+import Lenis from "lenis";
+import "lenis/dist/lenis.css";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 import data from "@/lib/body3d-data.json";
@@ -150,6 +152,8 @@ const STOPS: Stop[] = [
     screen: "home",
   },
 ];
+/** Screens of scrolling per stop. */
+const STOP_SCREENS = 1.6;
 const CHANGE = STOPS.findIndex((s) => s.id === "change");
 
 const smooth = (a: number, b: number, x: number) => {
@@ -162,10 +166,32 @@ const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 function poseAt(p: number, mobile: boolean, shift: number): Pose {
   const i = Math.min(STOPS.length - 1, Math.max(0, Math.floor(p)));
   const j = Math.min(STOPS.length - 1, i + 1);
-  // Mostly moving, briefly holding at each stop: the camera travels down the body.
-  const t = smooth(0.1, 0.9, p - i);
+  const f = p - i;
+  // The camera keeps moving, slowing a little at each stop instead of stopping.
+  const u = f - (0.3 * Math.sin(2 * Math.PI * f)) / (2 * Math.PI);
+  // Colors and highlights fade over the middle of the move.
+  const t = smooth(0.15, 0.85, f);
   const a = STOPS[i].pose;
   const c = STOPS[j].pose;
+  // A Catmull-Rom curve through the stops, so the path bends smoothly through
+  // each one instead of changing direction with a jolt.
+  const h = Math.max(0, i - 1);
+  const k = Math.min(STOPS.length - 1, j + 1);
+  const curve = (get: (pose: Stop["pose"]) => number) => {
+    const p0 = get(STOPS[h].pose);
+    const p1 = get(a);
+    const p2 = get(c);
+    const p3 = get(STOPS[k].pose);
+    const u2 = u * u;
+    const u3 = u2 * u;
+    return (
+      0.5 *
+      (2 * p1 +
+        (-p0 + p2) * u +
+        (2 * p0 - 5 * p1 + 4 * p2 - p3) * u2 +
+        (-p0 + 3 * p1 - 3 * p2 + p3) * u3)
+    );
+  };
   // Between two different heatmaps, pass through the plain body instead of
   // mixing them (blue and orange would make purple).
   const blend = (x: Colors, y: Colors, u: number) =>
@@ -183,16 +209,16 @@ function poseAt(p: number, mobile: boolean, shift: number): Pose {
   if (p > CHANGE - 1 && p < CHANGE - 0.4) morph = 1 - smooth(CHANGE - 1, CHANGE - 0.4, p);
   else if (p >= CHANGE - 0.4 && p < CHANGE + 0.5) morph = smooth(CHANGE - 0.3, CHANGE + 0.35, p);
   return {
-    target: [0, 1, 2].map((k) => mix(a.target[k], c.target[k], t)) as Pose["target"],
-    distance: mix(a.distance, c.distance, t) * (mobile ? 1.45 : 1),
+    target: [0, 1, 2].map((n) => curve((q) => q.target[n])) as Pose["target"],
+    distance: curve((q) => q.distance) * (mobile ? 1.45 : 1),
     lift: mobile ? 0.2 : 0,
-    yaw: mix(a.yaw, c.yaw, t),
+    yaw: curve((q) => q.yaw),
     spin: mix(a.spin, c.spin, t),
     colors,
     focus: a.focus.map((f, k) => mix(f, c.focus[k], t)),
     morph,
     shift: mobile ? 0 : shift,
-    pitch: mix(a.pitch, c.pitch, t),
+    pitch: curve((q) => q.pitch),
   };
 }
 
@@ -498,6 +524,8 @@ export function ScrollStory() {
       () => setFailed(true),
     );
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+    // Inertial scrolling: wheel and trackpad steps glide instead of jumping.
+    const lenis = reduce.matches ? null : new Lenis({ autoRaf: true, lerp: 0.085 });
 
     let mobile = false;
     const onResize = () => {
@@ -540,7 +568,10 @@ export function ScrollStory() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const top = root.getBoundingClientRect().top + window.scrollY;
-      const p = Math.min(STOPS.length - 1, Math.max(0, (window.scrollY - top) / vh));
+      const p = Math.min(
+        STOPS.length - 1,
+        Math.max(0, (window.scrollY - top) / (vh * STOP_SCREENS)),
+      );
       const nearest = Math.round(p);
       const stop = STOPS[nearest];
       const near = Math.max(0, 1 - Math.abs(p - nearest) * 3);
@@ -564,7 +595,7 @@ export function ScrollStory() {
       let active = -1;
       cards.forEach((c, i) => {
         const d = p - i;
-        const o = Math.max(0, Math.min(1, 1 - Math.abs(d) * 2.4));
+        const o = Math.max(0, Math.min(1, 1 - Math.abs(d) * 1.8));
         c.style.opacity = String(o);
         c.style.visibility = o < 0.01 ? "hidden" : "visible";
         if (o > 0.5) active = i;
@@ -576,12 +607,14 @@ export function ScrollStory() {
           const h = c.offsetHeight || 320;
           const y = Math.min(vh - h - 24, Math.max(80, anchor.y - h / 2));
           c.style.position = "fixed";
+          c.style.height = "auto";
           c.style.left = "0";
           c.style.top = "0";
           c.style.width = `${w}px`;
           c.style.transform = `translate(${x.toFixed(0)}px, ${(y - d * 60).toFixed(0)}px)`;
         } else {
           c.style.position = "";
+          c.style.height = "";
           c.style.left = "";
           c.style.top = "";
           c.style.width = "";
@@ -649,13 +682,15 @@ export function ScrollStory() {
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       sceneRef.current = null;
+      lenis?.destroy();
       scene.dispose();
     };
   }, []);
 
-  const section =
-    "relative flex h-[100svh] items-end px-4 pb-6 sm:px-6 lg:items-center lg:pb-0 pointer-events-none";
-  const inner = "mx-auto w-full max-w-6xl";
+  const section = "relative h-[160svh] px-4 sm:px-6 pointer-events-none";
+  // Each card stays on screen while its (taller) section scrolls past.
+  const inner =
+    "sticky top-0 mx-auto flex h-[100svh] w-full max-w-6xl items-end pb-6 lg:items-center lg:pb-0";
 
   return (
     <div ref={wrap} className="relative touch-pan-y select-none">

@@ -281,7 +281,7 @@ export class BodyScene {
 
   /** Eases the camera and body toward `pose` and draws a frame. */
   frame(pose: Pose, dt: number, reducedMotion: boolean) {
-    const ease = 1 - Math.exp(-dt * 5);
+    const ease = 1 - Math.exp(-dt * 4);
     this.cam.target.lerp(new THREE.Vector3(...pose.target), ease);
     this.cam.distance += (pose.distance - this.cam.distance) * ease;
     this.cam.shift += (pose.shift - this.cam.shift) * ease;
