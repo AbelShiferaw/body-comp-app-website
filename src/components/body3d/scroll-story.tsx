@@ -603,9 +603,16 @@ export function ScrollStory() {
           const w = Math.min(380, vw * 0.4);
           // Put the card on the outer side of the anchor, away from the body.
           const right = anchor.x > vw * 0.5;
-          const x = Math.min(vw - w - 24, Math.max(24, right ? anchor.x + 56 : anchor.x - 56 - w));
+          // Keep cards in from the screen edges, toward the middle.
+          const margin = vw * 0.1;
+          const x = Math.min(
+            vw - w - margin,
+            Math.max(margin, right ? anchor.x + 56 : anchor.x - 56 - w),
+          );
           const h = c.offsetHeight || 320;
-          const y = Math.min(vh - h - 24, Math.max(80, anchor.y - h / 2));
+          // Near the middle of the screen, leaning a little toward the anchor.
+          const lean = Math.max(-vh * 0.1, Math.min(vh * 0.1, anchor.y - vh / 2));
+          const y = Math.min(vh - h - 24, Math.max(80, (vh - h) / 2 + lean));
           c.style.position = "fixed";
           c.style.height = "auto";
           c.style.left = "0";
