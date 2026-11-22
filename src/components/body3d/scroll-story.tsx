@@ -44,55 +44,61 @@ type Stop = {
   screen: keyof typeof screens;
 };
 
-const whole: [number, number, number] = [0, 0.02, 0];
-
 const STOPS: Stop[] = [
   {
     id: "hero",
-    pose: { target: whole, distance: 4.4, yaw: 0, spin: 1, colors: base, focus: zero, pitch: 0.04 },
+    pose: {
+      target: [0, 0.6, 0],
+      distance: 1.55,
+      yaw: 0.2,
+      spin: 0.12,
+      colors: base,
+      focus: zero,
+      pitch: 0.05,
+    },
     pin: null,
     screen: "home",
   },
   {
-    id: "belly",
-    pose: {
-      target: [0, 0.26, 0],
-      distance: 2.6,
-      yaw: 0.4,
-      spin: 0,
-      colors: fat,
-      focus: focusOn(Slot.android),
-      pitch: 0.2,
-    },
-    pin: { slot: Slot.android, offset: [0, 0, 0.12] },
-    pinLabel: `Belly · ${pct(b.android.fatPct)} fat`,
-    screen: "fat",
-  },
-  {
     id: "arms",
     pose: {
-      target: [0.3, 0.3, 0],
-      distance: 2.7,
+      target: [0.27, 0.4, 0],
+      distance: 1.35,
       yaw: -0.35,
       spin: 0,
       colors: leanChange,
       focus: focusOn(Slot.leftArm, Slot.rightArm),
-      pitch: 0.1,
+      pitch: 0.08,
     },
     pin: { slot: Slot.leftArm, offset: [0, 0.02, 0.05] },
     pinLabel: `Left arm · ${kg(r.leftArm.leanKg)} lean`,
     screen: "change",
   },
   {
+    id: "belly",
+    pose: {
+      target: [0, 0.22, 0],
+      distance: 1.15,
+      yaw: 0.3,
+      spin: 0,
+      colors: fat,
+      focus: focusOn(Slot.android),
+      pitch: 0.12,
+    },
+    pin: { slot: Slot.android, offset: [0, 0, 0.12] },
+    pinLabel: `Belly · ${pct(b.android.fatPct)} fat`,
+    screen: "fat",
+  },
+  {
     id: "legs",
     pose: {
-      target: [0, -0.42, 0],
-      distance: 3.1,
-      yaw: -0.6,
+      target: [0.04, -0.4, 0],
+      distance: 1.5,
+      yaw: -0.4,
       spin: 0,
       colors: fat,
       focus: focusOn(Slot.leftLeg, Slot.rightLeg, Slot.gynoid),
-      pitch: -0.12,
+      pitch: -0.06,
     },
     pin: { slot: Slot.rightLeg, offset: [0, 0.15, 0.06] },
     pinLabel: `Right leg · ${kg(r.rightLeg.leanKg)} lean`,
@@ -101,13 +107,13 @@ const STOPS: Stop[] = [
   {
     id: "fatmap",
     pose: {
-      target: whole,
-      distance: 4.4,
-      yaw: 0.6,
-      spin: 0.25,
+      target: [0, -0.1, 0],
+      distance: 2.7,
+      yaw: 0.5,
+      spin: 0.15,
       colors: fat,
       focus: zero,
-      pitch: 0.12,
+      pitch: 0.08,
     },
     pin: { slot: Slot.trunk, offset: [0.12, 0.1, 0.1] },
     pinLabel: `Trunk · ${pct(r.trunk.fatPct)} fat`,
@@ -116,21 +122,29 @@ const STOPS: Stop[] = [
   {
     id: "change",
     pose: {
-      target: whole,
-      distance: 4.2,
+      target: [0, 0.05, 0],
+      distance: 3.1,
       yaw: 0,
       spin: 0,
       colors: fatChange,
       focus: zero,
       pitch: 0.04,
     },
-    pin: { slot: Slot.android, offset: [0, 0, 0.14] },
+    pin: { slot: Slot.android, offset: [0.2, 0, 0.12] },
     pinLabel: `Belly · ${kg(b.android.fatKg - first.bands.android.fatKg)} fat`,
     screen: "change",
   },
   {
     id: "level",
-    pose: { target: whole, distance: 4.6, yaw: 0, spin: 1, colors: base, focus: zero, pitch: 0.04 },
+    pose: {
+      target: [0, 0.55, 0],
+      distance: 1.7,
+      yaw: 0,
+      spin: 0.3,
+      colors: base,
+      focus: zero,
+      pitch: 0.04,
+    },
     pin: { slot: Slot.head, offset: [0, 0.16, 0] },
     pinLabel: `Level ${data.scans.length}`,
     screen: "home",
@@ -148,12 +162,22 @@ const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 function poseAt(p: number, mobile: boolean, shift: number): Pose {
   const i = Math.min(STOPS.length - 1, Math.max(0, Math.floor(p)));
   const j = Math.min(STOPS.length - 1, i + 1);
-  const t = smooth(0.25, 0.75, p - i);
+  // Mostly moving, briefly holding at each stop: the camera travels down the body.
+  const t = smooth(0.1, 0.9, p - i);
   const a = STOPS[i].pose;
   const c = STOPS[j].pose;
-  const colors = Object.fromEntries(
-    (Object.keys(a.colors) as (keyof Colors)[]).map((k) => [k, mix(a.colors[k], c.colors[k], t)]),
-  ) as Colors;
+  // Between two different heatmaps, pass through the plain body instead of
+  // mixing them (blue and orange would make purple).
+  const blend = (x: Colors, y: Colors, u: number) =>
+    Object.fromEntries(
+      (Object.keys(x) as (keyof Colors)[]).map((k) => [k, mix(x[k], y[k], u)]),
+    ) as Colors;
+  const viaBase = a.colors !== c.colors && a.colors !== base && c.colors !== base;
+  const colors = !viaBase
+    ? blend(a.colors, c.colors, t)
+    : t < 0.5
+      ? blend(a.colors, base, t * 2)
+      : blend(base, c.colors, t * 2 - 1);
   // Change stop: rewind to the first scan on the way in, then play it forward.
   let morph = 1;
   if (p > CHANGE - 1 && p < CHANGE - 0.4) morph = 1 - smooth(CHANGE - 1, CHANGE - 0.4, p);
@@ -721,26 +745,6 @@ export function ScrollStory() {
 
         <section className={section}>
           <div data-card className={inner}>
-            <Card eyebrow="Tap any region" title="See where your fat actually sits.">
-              <p className="mt-3 text-ink-2">
-                DEXA measures fat region by region. Tap the belly in the app and you get its own
-                numbers, not just one body fat percentage.
-              </p>
-              <div className="mt-5 grid grid-cols-3 gap-4">
-                <Stat label="Belly fat" value={pct(b.android.fatPct)} />
-                <Stat label="Belly fat mass" value={kg(b.android.fatKg)} />
-                <Stat
-                  label="Visceral"
-                  value={`${latest.visceralG} g`}
-                  note={`▼ ${first.visceralG - latest.visceralG} g since Mar`}
-                />
-              </div>
-            </Card>
-          </div>
-        </section>
-
-        <section className={section}>
-          <div data-card className={inner}>
             <Card eyebrow="Arms · left and right" title="Know if one side is lagging.">
               <p className="mt-3 text-ink-2">
                 Lean mass for each arm and leg, from the scan. The color shows where you built
@@ -759,6 +763,26 @@ export function ScrollStory() {
                 stops={data.legend.leanChange}
                 format={(v) => (v === 0 ? "no change" : `${v > 0 ? "+" : ""}${v * 100}% lean`)}
               />
+            </Card>
+          </div>
+        </section>
+
+        <section className={section}>
+          <div data-card className={inner}>
+            <Card eyebrow="Tap any region" title="See where your fat actually sits.">
+              <p className="mt-3 text-ink-2">
+                DEXA measures fat region by region. Tap the belly in the app and you get its own
+                numbers, not just one body fat percentage.
+              </p>
+              <div className="mt-5 grid grid-cols-3 gap-4">
+                <Stat label="Belly fat" value={pct(b.android.fatPct)} />
+                <Stat label="Belly fat mass" value={kg(b.android.fatKg)} />
+                <Stat
+                  label="Visceral"
+                  value={`${latest.visceralG} g`}
+                  note={`▼ ${first.visceralG - latest.visceralG} g since Mar`}
+                />
+              </div>
             </Card>
           </div>
         </section>
