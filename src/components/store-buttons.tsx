@@ -1,9 +1,9 @@
 import Link from "next/link";
 
-function Badge({ store, platform }: { store: string; platform: string }) {
+function Badge({ store, platform, href }: { store: string; platform: string; href: string }) {
   return (
     <Link
-      href="/#waitlist"
+      href={href}
       className="flex items-center gap-3 rounded-xl bg-ink px-4 py-2.5 text-bg hover:opacity-90"
       aria-label={`${store}: coming soon. Join the waitlist`}
     >
@@ -27,11 +27,17 @@ function Badge({ store, platform }: { store: string; platform: string }) {
 }
 
 /** Store "coming soon" buttons; both lead to the waitlist until the apps are listed. */
-export function StoreButtons({ className = "" }: { className?: string }) {
+export function StoreButtons({
+  className = "",
+  href = "/#waitlist",
+}: {
+  className?: string;
+  href?: string;
+}) {
   return (
     <div className={`flex flex-wrap gap-3 ${className}`}>
-      <Badge store="App Store" platform="iPhone" />
-      <Badge store="Google Play" platform="Android" />
+      <Badge store="App Store" platform="iPhone" href={href} />
+      <Badge store="Google Play" platform="Android" href={href} />
     </div>
   );
 }
