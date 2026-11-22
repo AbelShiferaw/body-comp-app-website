@@ -241,6 +241,39 @@ export class BodyScene {
     return w ? [x / w, y / w, z / w] : [0, 0, 0];
   }
 
+  /**
+   * A point on the front surface of a mask slot, `dy` metres above its
+   * centroid, at the current morph: where a pinned label should touch the skin.
+   */
+  surfacePoint(slot: number, dy = 0, side = 0): [number, number, number] {
+    const d = this.data;
+    if (!d) return [0, 0, 0];
+    const [cx, cy] = this.centroid(slot);
+    const ty = cy + dy;
+    const m = this.morph;
+    let best = -Infinity;
+    let at: [number, number, number] = [cx, ty, 0];
+    for (let v = 0; v < d.to.length / 3; v++) {
+      if (d.masks[v * SLOTS + slot] < 200) continue;
+      const i = v * 3;
+      const x = d.from[i] + (d.to[i] - d.from[i]) * m;
+      const y = d.from[i + 1] + (d.to[i + 1] - d.from[i + 1]) * m;
+      const z = -(d.from[i + 2] + (d.to[i + 2] - d.from[i + 2]) * m);
+      // Front-most vertex close to the aim point; with `side`, the outermost
+      // one on that side (+1 = +x) at the aim height, e.g. the outer hip.
+      const score = side
+        ? side * x + 0.3 * z - 3 * Math.abs(y - ty)
+        : 0.5 * z - 3 * Math.hypot(x - cx, y - ty);
+      if (score > best) {
+        best = score;
+        at = [x, y, z];
+      }
+    }
+    return at;
+  }
+
+  private morph = 1;
+
   private paint(colors: Colors, focus: number[]) {
     const d = this.data;
     const attr = this.colorAttr;
@@ -329,6 +362,7 @@ export class BodyScene {
       this.height,
     );
 
+    this.morph = pose.morph;
     if (this.mesh?.morphTargetInfluences) this.mesh.morphTargetInfluences[0] = pose.morph;
     this.paint(pose.colors, pose.focus);
     this.renderer.render(this.scene, this.camera);

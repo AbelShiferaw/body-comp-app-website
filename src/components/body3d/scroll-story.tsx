@@ -39,8 +39,8 @@ const leanChange: Colors = { base: 0, fat: 0, fatChange: 0, leanChange: 1 };
 type Stop = {
   id: string;
   pose: Omit<Pose, "morph" | "shift" | "lift">;
-  /** Slot whose centroid anchors the pinned label or card, with an offset. */
-  pin: { slot: number; offset?: [number, number, number] } | null;
+  /** Mask slot whose front surface the label touches, `dy` metres above its middle. */
+  pin: { slot: number; dy?: number; side?: number } | null;
   pinLabel?: string;
   /** App screen shown on phones in "light" mode and beside the stop in "each stop" mode. */
   screen: keyof typeof screens;
@@ -72,7 +72,7 @@ const STOPS: Stop[] = [
       focus: focusOn(Slot.leftArm, Slot.rightArm),
       pitch: 0.08,
     },
-    pin: { slot: Slot.leftArm, offset: [0, 0.02, 0.05] },
+    pin: { slot: Slot.leftArm, dy: 0.08 },
     pinLabel: `Left arm · ${kg(r.leftArm.leanKg)} lean`,
     screen: "change",
   },
@@ -87,23 +87,23 @@ const STOPS: Stop[] = [
       focus: focusOn(Slot.android),
       pitch: 0.12,
     },
-    pin: { slot: Slot.android, offset: [0, 0, 0.12] },
+    pin: { slot: Slot.android },
     pinLabel: `Belly · ${pct(b.android.fatPct)} fat`,
     screen: "fat",
   },
   {
     id: "legs",
     pose: {
-      target: [0.04, -0.4, 0],
-      distance: 1.5,
+      target: [0.02, -0.24, 0],
+      distance: 1.6,
       yaw: -0.4,
       spin: 0,
       colors: fat,
       focus: focusOn(Slot.leftLeg, Slot.rightLeg, Slot.gynoid),
       pitch: -0.06,
     },
-    pin: { slot: Slot.rightLeg, offset: [0, 0.15, 0.06] },
-    pinLabel: `Right leg · ${kg(r.rightLeg.leanKg)} lean`,
+    pin: { slot: Slot.gynoid, side: -1 },
+    pinLabel: `Hips · ${pct(b.gynoid.fatPct)} fat`,
     screen: "fat",
   },
   {
@@ -117,7 +117,7 @@ const STOPS: Stop[] = [
       focus: zero,
       pitch: 0.08,
     },
-    pin: { slot: Slot.trunk, offset: [0.12, 0.1, 0.1] },
+    pin: { slot: Slot.trunk, dy: -0.08 },
     pinLabel: `Trunk · ${pct(r.trunk.fatPct)} fat`,
     screen: "fat",
   },
@@ -132,8 +132,8 @@ const STOPS: Stop[] = [
       focus: zero,
       pitch: 0.04,
     },
-    pin: { slot: Slot.android, offset: [0.2, 0, 0.12] },
-    pinLabel: `Belly · ${kg(b.android.fatKg - first.bands.android.fatKg)} fat`,
+    pin: { slot: Slot.android },
+    pinLabel: `Belly · ▼ ${kg(first.bands.android.fatKg - b.android.fatKg)} fat since Mar`,
     screen: "change",
   },
   {
@@ -147,8 +147,7 @@ const STOPS: Stop[] = [
       focus: zero,
       pitch: 0.04,
     },
-    pin: { slot: Slot.head, offset: [0, 0.16, 0] },
-    pinLabel: `Level ${data.scans.length}`,
+    pin: null,
     screen: "home",
   },
 ];
@@ -206,8 +205,9 @@ function poseAt(p: number, mobile: boolean, shift: number): Pose {
       : blend(base, c.colors, t * 2 - 1);
   // Change stop: rewind to the first scan on the way in, then play it forward.
   let morph = 1;
-  if (p > CHANGE - 1 && p < CHANGE - 0.4) morph = 1 - smooth(CHANGE - 1, CHANGE - 0.4, p);
-  else if (p >= CHANGE - 0.4 && p < CHANGE + 0.5) morph = smooth(CHANGE - 0.3, CHANGE + 0.35, p);
+  // It finishes on the stop itself, so a page that snaps there shows November.
+  if (p > CHANGE - 1 && p < CHANGE - 0.55) morph = 1 - smooth(CHANGE - 0.95, CHANGE - 0.6, p);
+  else if (p >= CHANGE - 0.55 && p < CHANGE + 0.5) morph = smooth(CHANGE - 0.5, CHANGE - 0.02, p);
   return {
     target: [0, 1, 2].map((n) => curve((q) => q.target[n])) as Pose["target"],
     distance: curve((q) => q.distance) * (mobile ? 1.45 : 1),
@@ -526,6 +526,23 @@ export function ScrollStory() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     // Inertial scrolling: wheel and trackpad steps glide instead of jumping.
     const lenis = reduce.matches ? null : new Lenis({ autoRaf: true, lerp: 0.085 });
+    // Snap: when scrolling settles between two stops, glide to the nearer one
+    // so a section is never left half on screen.
+    let snapTimer = 0;
+    const snap = () => {
+      if (!lenis) return;
+      const stopPx = window.innerHeight * STOP_SCREENS;
+      const top = root.getBoundingClientRect().top + window.scrollY;
+      const p = (window.scrollY - top) / stopPx;
+      if (p < 0 || p > STOPS.length - 1) return;
+      const n = Math.round(p);
+      if (Math.abs(p - n) < 0.02) return;
+      lenis.scrollTo(top + n * stopPx, { duration: 0.9 });
+    };
+    lenis?.on("scroll", () => {
+      window.clearTimeout(snapTimer);
+      snapTimer = window.setTimeout(snap, 140);
+    });
 
     let mobile = false;
     const onResize = () => {
@@ -585,9 +602,7 @@ export function ScrollStory() {
 
       const anchor = stop.pin
         ? (() => {
-            const c = scene.centroid(stop.pin.slot);
-            const off = stop.pin.offset ?? [0, 0, 0];
-            return scene.project([c[0] + off[0], c[1] + off[1], c[2] + off[2]]);
+            return scene.project(scene.surfacePoint(stop.pin.slot, stop.pin.dy, stop.pin.side));
           })()
         : null;
 
@@ -641,6 +656,10 @@ export function ScrollStory() {
               pinText.current.dataset.stop = stop.id;
             }
             pinText.current.style.display = pinned ? "none" : "";
+            // Keep the label on screen: near the right edge it goes left of the dot.
+            const flip = anchor.x > vw - 200;
+            pinText.current.style.left = flip ? "auto" : "";
+            pinText.current.style.right = flip ? "16px" : "";
           }
           const card = active >= 0 ? cards[active]?.firstElementChild : null;
           if (card && !mobile) {
@@ -682,6 +701,7 @@ export function ScrollStory() {
       window.removeEventListener("pointerup", up);
       window.removeEventListener("pointercancel", up);
       sceneRef.current = null;
+      window.clearTimeout(snapTimer);
       lenis?.destroy();
       scene.dispose();
     };
@@ -831,7 +851,7 @@ export function ScrollStory() {
               </p>
               <div className="mt-5 grid grid-cols-3 gap-4">
                 <Stat label="Legs lean" value={kg(r.leftLeg.leanKg + r.rightLeg.leanKg)} />
-                <Stat label="Leg fat" value={pct(r.rightLeg.fatPct)} />
+                <Stat label="Right leg fat" value={pct(r.rightLeg.fatPct)} />
                 <Stat label="Hips fat" value={pct(b.gynoid.fatPct)} />
               </div>
             </Card>
