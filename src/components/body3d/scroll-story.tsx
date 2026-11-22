@@ -578,7 +578,7 @@ export function ScrollStory() {
 
       scene.motion = s.motion;
       // Pinned cards sit on the body, so it stays centered; side panels push it right.
-      const shift = pinned && p > 0.5 ? 0 : 0.17;
+      const shift = pinned && p > 0.5 ? 0.1 : 0.17;
       const pose = poseAt(p, mobile, shift);
       if (stage) stage.style.display = light ? "none" : "";
       if (!light) scene.frame(pose, dt, reduce.matches);
@@ -601,18 +601,11 @@ export function ScrollStory() {
         if (o > 0.5) active = i;
         if (pinned && i > 0 && !light && anchor && i === nearest) {
           const w = Math.min(380, vw * 0.4);
-          // Put the card on the outer side of the anchor, away from the body.
-          const right = anchor.x > vw * 0.5;
-          // Keep cards in from the screen edges, toward the middle.
-          const margin = vw * 0.1;
-          const x = Math.min(
-            vw - w - margin,
-            Math.max(margin, right ? anchor.x + 56 : anchor.x - 56 - w),
-          );
+          // Cards sit on the left, vertically centered; the leader line
+          // connects them to the body part.
+          const x = Math.max(24, vw * 0.06);
           const h = c.offsetHeight || 320;
-          // Near the middle of the screen, leaning a little toward the anchor.
-          const lean = Math.max(-vh * 0.1, Math.min(vh * 0.1, anchor.y - vh / 2));
-          const y = Math.min(vh - h - 24, Math.max(80, (vh - h) / 2 + lean));
+          const y = Math.max(80, (vh - h) / 2);
           c.style.position = "fixed";
           c.style.height = "auto";
           c.style.left = "0";
