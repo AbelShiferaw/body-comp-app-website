@@ -43,9 +43,12 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${inter.variable} ${archivo.variable} ${chakra.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col font-sans">{children}</body>
+      <body suppressHydrationWarning className="flex min-h-full flex-col font-sans">
+        {children}
+      </body>
     </html>
   );
 }
