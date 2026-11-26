@@ -46,12 +46,6 @@ export type Pose = {
   pitch: number;
 };
 
-/**
- * How the view moves between stops: the camera flies around a still body, or
- * the camera stays in front and the body turns and slides to it.
- */
-export type Motion = "fly" | "turn";
-
 type Data = {
   from: Float32Array;
   to: Float32Array;
@@ -106,7 +100,6 @@ export class BodyScene {
   private key = new THREE.DirectionalLight(0xffffff, 2.2);
   private rim = new THREE.DirectionalLight(0x9fd4ff, 0);
   private cam = { target: new THREE.Vector3(0, 0, 0), distance: 3.2, shift: 0, pitch: 0, lift: 0 };
-  motion: Motion = "fly";
   private autoYaw = 0;
   private yaw = 0;
   /** Extra turn from dragging, eased back to 0 when the user lets go. */
@@ -193,16 +186,14 @@ export class BodyScene {
   }
 
   /** Light or dark page: body tone and lights follow the theme. */
-  setTheme(dark: boolean, cinematic = false) {
+  setTheme(dark: boolean) {
     const hex = dark ? 0xc9cdd4 : 0xe9e4dc;
     const c = new THREE.Color(hex);
     this.baseRgb = [srgbToLinear(c.r), srgbToLinear(c.g), srgbToLinear(c.b)];
     this.hemi.intensity = dark ? 1.1 : 1.6;
     this.hemi.groundColor.set(dark ? 0x30343c : 0x8a8f99);
     this.key.intensity = dark ? 2.4 : 2.2;
-    this.rim.intensity = cinematic ? 4.5 : dark ? 2.2 : 0.4;
-    this.hemi.intensity = cinematic ? 0.6 : this.hemi.intensity;
-    this.renderer.toneMappingExposure = cinematic ? 1.25 : 1.05;
+    this.rim.intensity = dark ? 2.2 : 0.4;
     this.lastColorKey = "";
   }
 
@@ -331,28 +322,18 @@ export class BodyScene {
 
     const t = this.cam.target;
     const d = this.cam.distance;
-    if (this.motion === "fly") {
-      // The body stands still (drag still turns it); the camera orbits to the
-      // stop's angle and swoops up or down to its height.
-      this.group.rotation.y = this.dragYaw;
-      this.group.position.set(0, 0, 0);
-      const a = -this.autoYaw;
-      const pitch = this.cam.pitch;
-      this.camera.position.set(
-        t.x + d * Math.cos(pitch) * Math.sin(a),
-        t.y + d * Math.sin(pitch),
-        t.z + d * Math.cos(pitch) * Math.cos(a),
-      );
-      this.camera.lookAt(t);
-    } else {
-      // The camera stays in front; the body turns and slides so the stop's
-      // point comes to the middle of the view.
-      this.group.rotation.y = this.yaw;
-      const p = t.clone().applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
-      this.group.position.set(-p.x, -p.y, -p.z);
-      this.camera.position.set(0, d * 0.06, d);
-      this.camera.lookAt(0, 0, 0);
-    }
+    // The body stands still (drag still turns it); the camera orbits to the
+    // stop's angle and swoops up or down to its height.
+    this.group.rotation.y = this.dragYaw;
+    this.group.position.set(0, 0, 0);
+    const a = -this.autoYaw;
+    const pitch = this.cam.pitch;
+    this.camera.position.set(
+      t.x + d * Math.cos(pitch) * Math.sin(a),
+      t.y + d * Math.sin(pitch),
+      t.z + d * Math.cos(pitch) * Math.cos(a),
+    );
+    this.camera.lookAt(t);
     this.camera.setViewOffset(
       this.width,
       this.height,

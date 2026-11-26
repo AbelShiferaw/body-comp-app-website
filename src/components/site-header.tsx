@@ -8,15 +8,6 @@ export function SiteHeader() {
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
         <Wordmark />
         <nav className="flex items-center gap-6 text-sm text-ink-2">
-          <Link href="/#how" className="hidden hover:text-ink sm:inline">
-            How it works
-          </Link>
-          <Link href="/#features" className="hidden hover:text-ink sm:inline">
-            Features
-          </Link>
-          <Link href="/#faq" className="hidden hover:text-ink sm:inline">
-            FAQ
-          </Link>
           <Link
             href="/#waitlist"
             className="rounded-full bg-lean px-4 py-2 font-semibold text-on-lean hover:opacity-90"

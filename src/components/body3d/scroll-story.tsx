@@ -2,13 +2,13 @@
 
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import data from "@/lib/body3d-data.json";
 import { screens } from "@/lib/screens";
 import { Phone } from "../phone";
 import { StoreButtons } from "../store-buttons";
-import { BodyScene, Slot, type Colors, type Motion, type Pose } from "./body-scene";
+import { BodyScene, Slot, type Colors, type Pose } from "./body-scene";
 
 // ---------------------------------------------------------------------------
 // Sample numbers (the app's made-up fixture timeline, never real scans).
@@ -42,8 +42,6 @@ type Stop = {
   /** Mask slot whose front surface the label touches, `dy` metres above its middle. */
   pin: { slot: number; dy?: number; side?: number } | null;
   pinLabel?: string;
-  /** App screen shown on phones in "light" mode and beside the stop in "each stop" mode. */
-  screen: keyof typeof screens;
 };
 
 const STOPS: Stop[] = [
@@ -59,7 +57,6 @@ const STOPS: Stop[] = [
       pitch: 0.05,
     },
     pin: null,
-    screen: "home",
   },
   {
     id: "arms",
@@ -74,7 +71,6 @@ const STOPS: Stop[] = [
     },
     pin: { slot: Slot.leftArm, dy: 0.08 },
     pinLabel: `Left arm · ${kg(r.leftArm.leanKg)} lean`,
-    screen: "change",
   },
   {
     id: "belly",
@@ -89,7 +85,6 @@ const STOPS: Stop[] = [
     },
     pin: { slot: Slot.android },
     pinLabel: `Belly · ${pct(b.android.fatPct)} fat`,
-    screen: "fat",
   },
   {
     id: "legs",
@@ -104,7 +99,6 @@ const STOPS: Stop[] = [
     },
     pin: { slot: Slot.gynoid, side: -1 },
     pinLabel: `Hips · ${pct(b.gynoid.fatPct)} fat`,
-    screen: "fat",
   },
   {
     id: "fatmap",
@@ -119,7 +113,6 @@ const STOPS: Stop[] = [
     },
     pin: { slot: Slot.trunk, dy: -0.08 },
     pinLabel: `Trunk · ${pct(r.trunk.fatPct)} fat`,
-    screen: "fat",
   },
   {
     id: "change",
@@ -134,7 +127,6 @@ const STOPS: Stop[] = [
     },
     pin: { slot: Slot.android },
     pinLabel: `Belly · ▼ ${kg(first.bands.android.fatKg - b.android.fatKg)} fat since Mar`,
-    screen: "change",
   },
   {
     id: "level",
@@ -148,7 +140,6 @@ const STOPS: Stop[] = [
       pitch: 0.04,
     },
     pin: null,
-    screen: "home",
   },
 ];
 /** Screens of scrolling per stop. */
@@ -311,160 +302,6 @@ function HexBadge({ level }: { level: number }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Compare-versions switches, kept in the URL so each combination has a link.
-
-type Settings = {
-  motion: Motion;
-  labels: "pinned" | "side";
-  mood: "auto" | "bright" | "cinematic";
-  screens: "end" | "each";
-  phone: "full" | "light";
-};
-const OPTIONS: { [K in keyof Settings]: { label: string; values: [Settings[K], string][] } } = {
-  motion: {
-    label: "Motion",
-    values: [
-      ["fly", "Camera flies"],
-      ["turn", "Body turns"],
-    ],
-  },
-  labels: {
-    label: "Numbers",
-    values: [
-      ["pinned", "Pinned to body"],
-      ["side", "Side panel"],
-    ],
-  },
-  mood: {
-    label: "Mood",
-    values: [
-      ["auto", "Follow system"],
-      ["bright", "Bright"],
-      ["cinematic", "Cinematic"],
-    ],
-  },
-  screens: {
-    label: "App screens",
-    values: [
-      ["end", "End only"],
-      ["each", "At each stop"],
-    ],
-  },
-  phone: {
-    label: "On phones",
-    values: [
-      ["full", "Full 3D"],
-      ["light", "Light"],
-    ],
-  },
-};
-const DEFAULTS: Settings = {
-  motion: "fly",
-  labels: "pinned",
-  mood: "auto",
-  screens: "end",
-  phone: "full",
-};
-
-function parseSettings(search: string): Settings {
-  const q = new URLSearchParams(search);
-  const out = { ...DEFAULTS } as Record<keyof Settings, string>;
-  for (const k of Object.keys(OPTIONS) as (keyof Settings)[]) {
-    const v = q.get(k);
-    if (v && OPTIONS[k].values.some(([x]) => x === v)) out[k] = v;
-  }
-  return out as Settings;
-}
-
-const SETTINGS_EVENT = "body3d-settings";
-const subscribe = (cb: () => void) => {
-  window.addEventListener("popstate", cb);
-  window.addEventListener(SETTINGS_EVENT, cb);
-  return () => {
-    window.removeEventListener("popstate", cb);
-    window.removeEventListener(SETTINGS_EVENT, cb);
-  };
-};
-
-function useSettings(): [Settings, (k: keyof Settings, v: string) => void] {
-  const search = useSyncExternalStore(
-    subscribe,
-    () => window.location.search,
-    () => "",
-  );
-  const set = (k: keyof Settings, v: string) => {
-    const q = new URLSearchParams(window.location.search);
-    q.set(k, v);
-    window.history.replaceState(
-      null,
-      "",
-      `${window.location.pathname}?${q}${window.location.hash}`,
-    );
-    window.dispatchEvent(new Event(SETTINGS_EVENT));
-  };
-  return [parseSettings(search), set];
-}
-
-function SwitchPanel({
-  settings,
-  set,
-}: {
-  settings: Settings;
-  set: (k: keyof Settings, v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="pointer-events-auto fixed bottom-3 right-3 z-40 max-w-[calc(100vw-1.5rem)]">
-      {open ? (
-        <div className="w-72 rounded-2xl border border-outline bg-surface/95 p-3 text-xs shadow-xl backdrop-blur">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="font-semibold text-ink">Compare versions</span>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="text-ink-3 hover:text-ink"
-            >
-              Hide
-            </button>
-          </div>
-          {(Object.keys(OPTIONS) as (keyof Settings)[]).map((k) => (
-            <div key={k} className="mt-2">
-              <div className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-3">
-                {OPTIONS[k].label}
-              </div>
-              <div className="flex rounded-lg border border-outline p-0.5">
-                {OPTIONS[k].values.map(([v, label]) => (
-                  <button
-                    key={v}
-                    type="button"
-                    onClick={() => set(k, v)}
-                    aria-pressed={settings[k] === v}
-                    className={`flex-1 rounded-md px-2 py-1 ${settings[k] === v ? "bg-lean font-semibold text-on-lean" : "text-ink-2 hover:text-ink"}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-          <p className="mt-3 text-[10px] leading-snug text-ink-3">
-            The link in the address bar keeps this combination.
-          </p>
-        </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setOpen(true)}
-          className="rounded-full border border-outline bg-surface/95 px-3 py-2 text-xs font-semibold text-ink shadow-lg"
-        >
-          Compare versions
-        </button>
-      )}
-    </div>
-  );
-}
-
 const fatDrop = first.bodyFatPct - latest.bodyFatPct;
 const leanGain = latest.leanKg - first.leanKg;
 
@@ -480,31 +317,15 @@ export function ScrollStory() {
   const sceneRef = useRef<BodyScene | null>(null);
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [settings, setSetting] = useSettings();
-  const settingsRef = useRef(settings);
 
+  // The body's tone follows the page's light or dark theme.
   useEffect(() => {
-    settingsRef.current = settings;
-  }, [settings]);
-
-  // Mood: force a theme on the whole page, or follow the system.
-  useEffect(() => {
-    const html = document.documentElement;
-    if (settings.mood === "auto") delete html.dataset.mood;
-    else html.dataset.mood = settings.mood;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => {
-      const cinematic = settings.mood === "cinematic";
-      const dark = cinematic || (settings.mood === "auto" && media.matches);
-      sceneRef.current?.setTheme(dark, cinematic);
-    };
+    const apply = () => sceneRef.current?.setTheme(media.matches);
     apply();
     media.addEventListener("change", apply);
-    return () => {
-      media.removeEventListener("change", apply);
-      delete html.dataset.mood;
-    };
-  }, [settings.mood, loaded]);
+    return () => media.removeEventListener("change", apply);
+  }, [loaded]);
 
   useEffect(() => {
     const el = canvas.current;
@@ -572,16 +393,14 @@ export function ScrollStory() {
     window.addEventListener("pointercancel", up);
 
     const cards = Array.from(root.querySelectorAll<HTMLElement>("[data-card]"));
-    const phones = Array.from(root.querySelectorAll<HTMLElement>("[data-phone]"));
-    const stage = root.querySelector<HTMLElement>("[data-stage]");
     let raf = 0;
     let last = performance.now();
     const tick = (now: number) => {
       const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
-      const s = settingsRef.current;
-      const light = mobile && s.phone === "light";
-      const pinned = s.labels === "pinned" && !mobile;
+      // Desktop: cards on the left, tied to the body by a leader line.
+      // Phones: cards along the bottom, with a label beside the dot.
+      const pinned = !mobile;
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const top = root.getBoundingClientRect().top + window.scrollY;
@@ -593,12 +412,10 @@ export function ScrollStory() {
       const stop = STOPS[nearest];
       const near = Math.max(0, 1 - Math.abs(p - nearest) * 3);
 
-      scene.motion = s.motion;
-      // Pinned cards sit on the body, so it stays centered; side panels push it right.
-      const shift = pinned && p > 0.5 ? 0.1 : 0.17;
+      // The hero text needs more room than a card, so the body starts further right.
+      const shift = p > 0.5 ? 0.1 : 0.17;
       const pose = poseAt(p, mobile, shift);
-      if (stage) stage.style.display = light ? "none" : "";
-      if (!light) scene.frame(pose, dt, reduce.matches);
+      scene.frame(pose, dt, reduce.matches);
 
       const anchor = stop.pin
         ? (() => {
@@ -614,7 +431,7 @@ export function ScrollStory() {
         c.style.opacity = String(o);
         c.style.visibility = o < 0.01 ? "hidden" : "visible";
         if (o > 0.5) active = i;
-        if (pinned && i > 0 && !light && anchor && i === nearest) {
+        if (pinned && i > 0 && anchor && i === nearest) {
           const w = Math.min(380, vw * 0.4);
           // Cards sit on the left, vertically centered; the leader line
           // connects them to the body part.
@@ -638,16 +455,9 @@ export function ScrollStory() {
         }
       });
 
-      // App screens: each stop's screen fades in (beside the body, or instead of it).
-      phones.forEach((ph, i) => {
-        const show = (light || (s.screens === "each" && nearest > 0)) && i === nearest;
-        ph.style.opacity = show ? String(near) : "0";
-        ph.dataset.mode = light ? "light" : "each";
-      });
-
       // Pinned dot, label and leader line.
       if (pin.current && line.current) {
-        if (anchor && near > 0 && !light) {
+        if (anchor && near > 0) {
           pin.current.style.opacity = String(near);
           pin.current.style.transform = `translate(${anchor.x}px, ${anchor.y}px)`;
           if (pinText.current) {
@@ -714,10 +524,9 @@ export function ScrollStory() {
 
   return (
     <div ref={wrap} className="relative touch-pan-y select-none">
-      <SwitchPanel settings={settings} set={setSetting} />
       {/* The body: one canvas pinned to the viewport for the whole story. */}
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
-        <div data-stage className="absolute inset-0">
+        <div className="absolute inset-0">
           <div
             aria-hidden
             className="absolute inset-0 bg-[radial-gradient(ellipse_at_62%_45%,var(--surface-high),transparent_60%)]"
@@ -734,21 +543,18 @@ export function ScrollStory() {
             </div>
           )}
           {failed && (
-            <div className="absolute inset-0 flex items-center justify-center p-8 text-center text-sm text-ink-3 lg:pl-[34%]">
-              Your browser couldn’t start 3D. The classic page shows the app in screenshots.
+            // No WebGL: show the app itself instead of the 3D body.
+            <div className="absolute inset-0 flex items-center justify-center p-8 lg:pl-[40%]">
+              <div className="w-[min(260px,55vw)]">
+                <Phone
+                  {...screens.home}
+                  alt="Obsessed app home screen, sample data"
+                  sizes="260px"
+                />
+              </div>
             </div>
           )}
         </div>
-        {STOPS.map((st) => (
-          <div
-            key={st.id}
-            data-phone
-            aria-hidden
-            className="pointer-events-none absolute opacity-0 transition-opacity duration-300 data-[mode=each]:top-24 data-[mode=each]:right-6 data-[mode=each]:w-[150px] data-[mode=light]:left-1/2 data-[mode=light]:top-20 data-[mode=light]:w-[36vw] data-[mode=light]:-translate-x-1/2"
-          >
-            <Phone {...screens[st.screen]} alt="" sizes="200px" />
-          </div>
-        ))}
         <svg aria-hidden className="pointer-events-none absolute inset-0 h-full w-full">
           <line
             ref={line}
