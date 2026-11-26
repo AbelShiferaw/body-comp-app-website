@@ -23,7 +23,9 @@ const fmtDate = (iso: string) =>
     year: "numeric",
     timeZone: "UTC",
   });
-const kg = (x: number) => `${x.toFixed(2)} kg`;
+// Pounds by default, like the app.
+const LB = 2.20462;
+const lb = (kg: number) => `${(kg * LB).toFixed(1)} lb`;
 const pct = (x: number) => `${x.toFixed(1)}%`;
 
 // ---------------------------------------------------------------------------
@@ -70,7 +72,7 @@ const STOPS: Stop[] = [
       pitch: 0.08,
     },
     pin: { slot: Slot.leftArm, dy: 0.08 },
-    pinLabel: `Left arm · ${kg(r.leftArm.leanKg)} lean`,
+    pinLabel: `Left arm · ${lb(r.leftArm.leanKg)} lean`,
   },
   {
     id: "belly",
@@ -126,7 +128,7 @@ const STOPS: Stop[] = [
       pitch: 0.04,
     },
     pin: { slot: Slot.android },
-    pinLabel: `Belly · ▼ ${kg(first.bands.android.fatKg - b.android.fatKg)} fat since Mar`,
+    pinLabel: `Belly · ▼ ${lb(first.bands.android.fatKg - b.android.fatKg)} fat since Mar`,
   },
   {
     id: "level",
@@ -495,7 +497,7 @@ export function ScrollStory() {
       if (changeFat.current)
         changeFat.current.textContent = pct(mix(first.bodyFatPct, latest.bodyFatPct, m));
       if (changeLean.current)
-        changeLean.current.textContent = `${mix(first.leanKg, latest.leanKg, m).toFixed(1)} kg`;
+        changeLean.current.textContent = lb(mix(first.leanKg, latest.leanKg, m));
       if (changeDate.current)
         changeDate.current.textContent = m < 0.5 ? fmtDate(first.date) : fmtDate(latest.date);
 
@@ -612,11 +614,11 @@ export function ScrollStory() {
                 muscle since your first scan.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-4">
-                <Stat label="Left arm" value={kg(r.leftArm.leanKg)} />
-                <Stat label="Right arm" value={kg(r.rightArm.leanKg)} />
+                <Stat label="Left arm" value={lb(r.leftArm.leanKg)} />
+                <Stat label="Right arm" value={lb(r.rightArm.leanKg)} />
                 <Stat
                   label="Since Mar"
-                  value={`+${kg(r.leftArm.leanKg - first.regions.leftArm.leanKg)}`}
+                  value={`+${lb(r.leftArm.leanKg - first.regions.leftArm.leanKg)}`}
                   note="left arm lean"
                 />
               </div>
@@ -637,7 +639,7 @@ export function ScrollStory() {
               </p>
               <div className="mt-5 grid grid-cols-3 gap-4">
                 <Stat label="Belly fat" value={pct(b.android.fatPct)} />
-                <Stat label="Belly fat mass" value={kg(b.android.fatKg)} />
+                <Stat label="Belly fat mass" value={lb(b.android.fatKg)} />
                 <Stat
                   label="Visceral"
                   value={`${latest.visceralG} g`}
@@ -656,7 +658,7 @@ export function ScrollStory() {
                 their own numbers.
               </p>
               <div className="mt-5 grid grid-cols-3 gap-4">
-                <Stat label="Legs lean" value={kg(r.leftLeg.leanKg + r.rightLeg.leanKg)} />
+                <Stat label="Legs lean" value={lb(r.leftLeg.leanKg + r.rightLeg.leanKg)} />
                 <Stat label="Right leg fat" value={pct(r.rightLeg.fatPct)} />
                 <Stat label="Hips fat" value={pct(b.gynoid.fatPct)} />
               </div>
@@ -705,13 +707,13 @@ export function ScrollStory() {
                     Lean
                   </div>
                   <span ref={changeLean} className="font-display text-2xl font-extrabold text-ink">
-                    {latest.leanKg.toFixed(1)} kg
+                    {lb(latest.leanKg)}
                   </span>
                 </div>
               </div>
               <p className="mt-3 text-sm font-medium text-lean">
-                ▼ {fatDrop.toFixed(1)} pts body fat · ▲ {leanGain.toFixed(1)} kg lean,{" "}
-                {fmtDate(first.date)} → {fmtDate(latest.date)}
+                ▼ {fatDrop.toFixed(1)} pts body fat · ▲ {lb(leanGain)} lean, {fmtDate(first.date)} →{" "}
+                {fmtDate(latest.date)}
               </p>
               <Legend
                 stops={data.legend.fatChange}
