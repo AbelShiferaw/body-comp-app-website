@@ -116,3 +116,34 @@ body {
 .legal strong {
   color: var(--ink);
 }
+
+/*
+ * /v2 "mood" switch: forces the light (bright) or dark (cinematic) tokens
+ * regardless of the system setting. Same values as above.
+ */
+:root[data-mood="bright"] {
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --surface-high: #ebedf0;
+  --outline: #d9dce1;
+  --ink: #111317;
+  --ink-2: #555b66;
+  --ink-3: #646a75;
+  --lean: #1f6fc5;
+  --fat: #b34e0c;
+  --on-lean: #ffffff;
+  color-scheme: light;
+}
+:root[data-mood="cinematic"] {
+  --bg: #000000;
+  --surface: #0e1014;
+  --surface-high: #1e2126;
+  --outline: #2a2e35;
+  --ink: #f2f3f5;
+  --ink-2: #a3a9b4;
+  --ink-3: #7d8491;
+  --lean: #7cc4ff;
+  --fat: #ff8a3d;
+  --on-lean: #0b0c0e;
+  color-scheme: dark;
+}
