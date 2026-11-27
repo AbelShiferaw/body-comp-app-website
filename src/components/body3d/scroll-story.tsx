@@ -156,6 +156,7 @@ const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 
 /** The pose at scroll position `p` (0 = first stop, 1 = second, ...). */
 function poseAt(p: number, mobile: boolean, shift: number): Pose {
+  if (!Number.isFinite(p)) p = 0;
   const i = Math.min(STOPS.length - 1, Math.max(0, Math.floor(p)));
   const j = Math.min(STOPS.length - 1, i + 1);
   const f = p - i;
@@ -406,10 +407,9 @@ export function ScrollStory() {
       const vw = window.innerWidth;
       const vh = window.innerHeight;
       const top = root.getBoundingClientRect().top + window.scrollY;
-      const p = Math.min(
-        STOPS.length - 1,
-        Math.max(0, (window.scrollY - top) / (vh * STOP_SCREENS)),
-      );
+      // Before the window reports a height, vh is 0 and this would be NaN.
+      const raw = vh > 0 ? (window.scrollY - top) / (vh * STOP_SCREENS) : 0;
+      const p = Math.min(STOPS.length - 1, Math.max(0, Number.isFinite(raw) ? raw : 0));
       const nearest = Math.round(p);
       const stop = STOPS[nearest];
       const near = Math.max(0, 1 - Math.abs(p - nearest) * 3);
