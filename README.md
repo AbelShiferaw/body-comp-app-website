@@ -4,9 +4,9 @@ Marketing site for **Obsessed** (working name), the app that turns DEXA scans in
 
 ## Pages
 
-- `/`: promotes the mobile app with real app screenshots in phone frames (`public/screens/`, from the beta build): hero with two phones and App Store / Google Play "coming soon" buttons, how it works (connect, home, change), tap-a-region spotlight, features, privacy (consent screen), FAQ, beta waitlist.
+- `/`: a scroll-driven 3D tour of the app's body (`src/components/tour/`, data in `src/lib/tour.ts`). It uses the app's own CC0 body model (`public/models/body.glb`, copied from `body-comp-app/packages/body_mapping/lib/assets/body.glb`), rendered with three.js. The camera flies close along the body: chest, arms, belly, Fat view, legs, then the Change view (March → November sample scans) and the app's home screen in a phone frame, then the beta waitlist. Numbers are pinned to the body parts they belong to, weights are in pounds like the app, and every number is the app's sample data. Scrolling snaps to the nearest stop; light and dark follow the system setting. `/v2` and `/3d` redirect to `/`.
 
-To refresh screenshots, replace the PNGs in `public/screens/` (390×844 or larger, same names). iPhone simulator captures at 3x look sharpest.
+To refresh the phone screenshot, replace `public/screens/home-light.png` and `home-dark.png` (390×844 or larger). To refresh the body, copy the app's `body.glb` again.
 
 - `/privacy`, `/terms`: **drafts for legal review**, shown with a draft banner and `noindex` until a lawyer signs off.
 
@@ -54,6 +54,7 @@ Vercel's Hobby plan is for non-commercial use only; move to **Pro** before launc
 ## Before launch
 
 - Lawyer review of `/privacy` and `/terms`; fill `[STATE]` and dispute terms; remove the draft banner and `noindex`.
-- Sharper 3x simulator screenshots; official App Store / Google Play badges once the apps are listed.
+- Sharper 3x simulator screenshot; official App Store / Google Play badges once the apps are listed.
+- Check the tour on a real iPhone, Android phone and a slower laptop.
 - Bot protection on the waitlist beyond the honeypot (e.g. Vercel BotID or Cloudflare Turnstile) if spam shows up.
 - Final name, logo and domain.

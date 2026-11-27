@@ -1,4 +1,4 @@
-// Data for the interactive tour (/v2): the app's sample scans, the numbers
+// Data for the home page tour: the app's sample scans, the numbers
 // shown at each stop, and the stops themselves. All numbers are the app's
 // sample data (body_mapping's sampleTimeline), computed the way the app
 // computes them, and the page labels them as sample data.
@@ -17,10 +17,8 @@ export const SLOTS = [
 ] as const;
 export type Slot = (typeof SLOTS)[number];
 
-export type Mood = "bright" | "cinematic";
-export type MoodSetting = Mood | "system";
-export type Motion = "fly" | "turn";
-export type Labels = "pinned" | "side";
+/** Light or dark, from the visitor's system setting. */
+export type Mood = "light" | "dark";
 export type AnchorName = "chest" | "abdomen" | "belly" | "hips" | "armL" | "armR" | "legL" | "legR";
 export type Rgb = [number, number, number];
 export type Center = "whole" | "belly" | "arms" | "legs";
@@ -206,7 +204,9 @@ const start = totals(SAMPLE_START);
 const r = SAMPLE_LATEST.regions;
 const a = SAMPLE_START.regions;
 
-const kg = (x: number, d = 2) => `${x.toFixed(d)} kg`;
+// Weights in pounds, like the app's default units.
+const LB_PER_KG = 2.20462;
+export const lb = (kg: number, d = 1) => `${(kg * LB_PER_KG).toFixed(d)} lb`;
 const pct = (x: number, d = 1) => `${x.toFixed(d)}%`;
 const signedPct = (rel: number) => `${rel > 0 ? "+" : "−"}${Math.abs(rel * 100).toFixed(0)}%`;
 
@@ -240,7 +240,7 @@ export const STOPS: Stop[] = [
     pins: [],
     stats: [
       { label: "Body fat", value: pct(latest.fatPct) },
-      { label: "Lean mass", value: kg(latest.leanKg, 1) },
+      { label: "Lean mass", value: lb(latest.leanKg) },
       { label: "Visceral fat", value: `${SAMPLE_LATEST.visceralG} g` },
     ],
     view: { center: "arms", dy: 2.2, yaw: 0.25, pitch: 0.04, dist: 15 },
@@ -252,11 +252,11 @@ export const STOPS: Stop[] = [
     title: "Lean mass, arm by arm.",
     body: "See lean mass for each arm and spot the side that lags behind, straight from your scan's left and right numbers.",
     pins: [
-      { anchor: "armR", label: "Right arm", value: kg(r.armR.lean), note: "lean mass" },
+      { anchor: "armR", label: "Right arm", value: lb(r.armR.lean), note: "lean mass" },
       {
         anchor: "armL",
         label: "Left arm",
-        value: kg(r.armL.lean),
+        value: lb(r.armL.lean),
         note: `${pct((100 * (r.armR.lean - r.armL.lean)) / r.armR.lean)} behind the right`,
       },
     ],
@@ -272,7 +272,7 @@ export const STOPS: Stop[] = [
       {
         anchor: "belly",
         label: "Belly fat",
-        value: kg(SAMPLE_LATEST.android.fat),
+        value: lb(SAMPLE_LATEST.android.fat),
         note: `${pct(fatPct(SAMPLE_LATEST.android))} of the belly`,
       },
       {
@@ -308,14 +308,14 @@ export const STOPS: Stop[] = [
       {
         anchor: "legR",
         label: "Right leg",
-        value: kg(r.legR.lean),
-        note: `+${kg(r.legR.lean - a.legR.lean)} since Mar`,
+        value: lb(r.legR.lean),
+        note: `+${lb(r.legR.lean - a.legR.lean)} since Mar`,
       },
       {
         anchor: "legL",
         label: "Left leg",
-        value: kg(r.legL.lean),
-        note: `+${kg(r.legL.lean - a.legL.lean)} since Mar`,
+        value: lb(r.legL.lean),
+        note: `+${lb(r.legL.lean - a.legL.lean)} since Mar`,
       },
     ],
     legend: FAT_LEGEND,
@@ -336,7 +336,7 @@ export const STOPS: Stop[] = [
     id: "change-end",
     eyebrow: "Change view",
     title: "See exactly what changed.",
-    body: `Blue is fat lost. ${SAMPLE_START.date.slice(0, 6)} to ${SAMPLE_LATEST.date.slice(0, 5)}: −${(start.fatKg - latest.fatKg).toFixed(1)} kg fat, +${(latest.leanKg - start.leanKg).toFixed(1)} kg lean, ${pct(start.fatPct)} → ${pct(latest.fatPct)} body fat.`,
+    body: `Blue is fat lost. ${SAMPLE_START.date.slice(0, 6)} to ${SAMPLE_LATEST.date.slice(0, 5)}: −${lb(start.fatKg - latest.fatKg)} fat, +${lb(latest.leanKg - start.leanKg)} lean, ${pct(start.fatPct)} → ${pct(latest.fatPct)} body fat.`,
     pins: [
       {
         anchor: "belly",
@@ -375,9 +375,22 @@ const smooth = (x: number) => x * x * (3 - 2 * x);
 /** Share of each scroll segment spent holding still at a stop. */
 export const HOLD = 0.16;
 
+/**
+ * Raw scroll progress through the tour, 0 to STOPS.length - 1, from the
+ * track's top and height and the window height. Before the window reports a
+ * height (first frame, hidden tabs) it is 0, never NaN.
+ */
+export function tourProgress(trackTop: number, trackHeight: number, viewport: number) {
+  const range = trackHeight - viewport;
+  if (!(viewport > 0) || !(range > 0)) return 0;
+  const p = (Math.min(Math.max(-trackTop, 0), range) / range) * (STOPS.length - 1);
+  return Number.isFinite(p) ? p : 0;
+}
+
 /** Eased progress between stop k and k+1 for raw scroll progress p. */
 export function segment(p: number, count = STOPS.length) {
   const max = count - 1;
+  if (!Number.isFinite(p)) p = 0;
   const q = Math.min(Math.max(p, 0), max);
   const k = Math.min(Math.floor(q), max - 1);
   const f = q - k;

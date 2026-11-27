@@ -1,8 +1,6 @@
-// Three.js scene for the interactive tour: the app's body mesh (the same
-// body.glb the app ships, CC0 MakeHuman base), colored per vertex from its
-// region masks, with two ways to move between stops:
-// - "fly":  the camera arcs around a still body (light follows the camera).
-// - "turn": the camera never moves; the body turns and slides on its stage.
+// Three.js scene for the home page tour: the app's body mesh (the same
+// body.glb the app ships, CC0 MakeHuman base), colored on the GPU from its
+// region masks. The camera flies close around a still body between stops.
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -10,7 +8,7 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 
-import type { AnchorName, Frame, Mood, Motion } from "@/lib/tour";
+import type { AnchorName, Frame, Mood } from "@/lib/tour";
 import { SLOT_COUNT } from "@/lib/tour";
 
 type Look = {
@@ -24,10 +22,10 @@ type Look = {
   floor: string;
 };
 
-// Colors mirror the app's Studio look (light) and its dark mode; the
-// cinematic look adds a rim light and bloom so the heatmap glows.
+// Colors mirror the app's Studio look (light) and its dark mode; dark adds
+// a rim light and bloom so the heatmap glows.
 const LOOKS: Record<Mood, Look> = {
-  bright: {
+  light: {
     background: 0xf4f5f7,
     body: [0.93, 0.9, 0.86],
     accent: [0.12, 0.44, 0.77],
@@ -37,8 +35,8 @@ const LOOKS: Record<Mood, Look> = {
     bloom: 0,
     floor: "rgba(17,19,23,0.16)",
   },
-  cinematic: {
-    background: 0x000000,
+  dark: {
+    background: 0x0b0c0e,
     body: [0.56, 0.6, 0.66],
     accent: [0.49, 0.77, 1],
     roughness: 0.5,
@@ -50,8 +48,6 @@ const LOOKS: Record<Mood, Look> = {
 };
 
 const FOV = 30;
-/** Camera distance of the "turn" mode's fixed camera. */
-const TURN_DIST = 38;
 
 export type Projected = { x: number; y: number; front: boolean; onScreen: boolean };
 
@@ -83,9 +79,8 @@ export class BodyScene {
   private masks?: Float32Array;
   private width = 1;
   private height = 1;
-  private look: Look = LOOKS.bright;
-  private mood: Mood = "bright";
-  private motion: Motion = "fly";
+  private look: Look = LOOKS.light;
+  private mood: Mood = "light";
   private morphIndex: Record<string, number> = {};
   private tmp = new THREE.Vector3();
 
@@ -174,7 +169,7 @@ export class BodyScene {
     this.composer.addPass(this.bloomPass);
     this.composer.addPass(new OutputPass());
 
-    this.setMood("bright");
+    this.setMood("light");
   }
 
   async load(url: string) {
@@ -318,18 +313,14 @@ export class BodyScene {
     this.scene.background = new THREE.Color(this.look.background);
     this.material.roughness = this.look.roughness;
     this.uniforms.uRim.value = this.look.rim;
-    this.rimLight.intensity = mood === "cinematic" ? 1.6 : 0.5;
-    this.hemi.intensity = mood === "cinematic" ? 0.55 : 1.1;
-    this.key.intensity = mood === "cinematic" ? 1.8 : 2.2;
+    this.rimLight.intensity = mood === "dark" ? 1.6 : 0.5;
+    this.hemi.intensity = mood === "dark" ? 0.55 : 1.1;
+    this.key.intensity = mood === "dark" ? 1.8 : 2.2;
     this.bloomPass.strength = this.look.bloom;
     (this.floor.material as THREE.MeshBasicMaterial).map = floorTexture(this.look.floor);
     (this.floor.material as THREE.MeshBasicMaterial).needsUpdate = true;
     this.uniforms.uBase.value.set(...this.look.body);
     this.uniforms.uAccent.value.set(...this.look.accent);
-  }
-
-  setMotion(motion: Motion) {
-    this.motion = motion;
   }
 
   resize(w: number, h: number) {
@@ -348,31 +339,16 @@ export class BodyScene {
     const narrow = Math.min(1.9, Math.max(1, 0.75 / this.camera.aspect));
     const dist = f.focus.dist * narrow;
 
-    if (this.motion === "fly") {
-      // Swoop: pull back mid-transition so the camera arcs between stops.
-      const d = dist + f.swoop * 2.5;
-      const yaw = f.focus.yaw + spin;
-      const pitch = f.focus.pitch;
-      this.stage.position.set(0, 0, 0);
-      this.stage.rotation.set(0, 0, 0);
-      this.stage.scale.setScalar(1);
-      this.camera.position.set(
-        c.x + d * Math.sin(yaw) * Math.cos(pitch),
-        c.y + d * Math.sin(pitch),
-        c.z + d * Math.cos(yaw) * Math.cos(pitch),
-      );
-      this.camera.lookAt(c);
-    } else {
-      // The camera stays put at eye level; the body turns on its stage, and
-      // the stage slides and scales so the focus region sits in frame.
-      const s = TURN_DIST / dist;
-      this.camera.position.set(0, 0, TURN_DIST);
-      this.camera.lookAt(0, 0, 0);
-      this.stage.rotation.set(0, -(f.focus.yaw + spin), 0);
-      this.stage.scale.setScalar(s);
-      const rc = c.clone().applyEuler(this.stage.rotation).multiplyScalar(s);
-      this.stage.position.set(-rc.x, -rc.y, -rc.z);
-    }
+    // Swoop: pull back a little mid-transition so the camera arcs.
+    const d = dist + f.swoop * 2.5;
+    const yaw = f.focus.yaw + spin;
+    const pitch = f.focus.pitch;
+    this.camera.position.set(
+      c.x + d * Math.sin(yaw) * Math.cos(pitch),
+      c.y + d * Math.sin(pitch),
+      c.z + d * Math.cos(yaw) * Math.cos(pitch),
+    );
+    this.camera.lookAt(c);
 
     // Shift the body sideways or up to make room for a side panel.
     if (f.offsetX || f.offsetY) {
@@ -404,7 +380,7 @@ export class BodyScene {
   }
 
   render() {
-    if (this.mood === "cinematic") this.composer.render();
+    if (this.mood === "dark") this.composer.render();
     else this.renderer.render(this.scene, this.camera);
   }
 

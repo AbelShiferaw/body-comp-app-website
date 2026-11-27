@@ -1,21 +1,14 @@
-import { Hero } from "@/components/hero";
-import { Faq, Features, HowItWorks, PrivacyPromise, RegionSpotlight } from "@/components/sections";
-import { StoreButtons } from "@/components/store-buttons";
 import { SiteFooter } from "@/components/site-footer";
 import { SiteHeader } from "@/components/site-header";
+import { Tour } from "@/components/tour/tour";
 import { WaitlistForm } from "@/components/waitlist-form";
 
 export default function Home() {
   return (
     <>
-      <SiteHeader />
+      <SiteHeader overlay />
       <main>
-        <Hero />
-        <HowItWorks />
-        <RegionSpotlight />
-        <Features />
-        <PrivacyPromise />
-        <Faq />
+        <Tour />
         <section id="waitlist" className="scroll-mt-20 border-t border-outline bg-surface-high/50">
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2">
             <div className="max-w-lg">
@@ -33,7 +26,9 @@ export default function Home() {
                 Beta testers get the app through TestFlight on iPhone and Google Play testing on
                 Android, before it reaches the stores.
               </p>
-              <StoreButtons className="mt-6" />
+              <p className="mt-4 text-sm text-ink-3">
+                The body and numbers above are the app’s sample data, not a real person’s scan.
+              </p>
             </div>
             <WaitlistForm />
           </div>

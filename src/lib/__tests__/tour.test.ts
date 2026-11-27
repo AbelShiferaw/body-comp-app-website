@@ -3,11 +3,13 @@ import { describe, expect, it } from "vitest";
 import {
   fatPct,
   frameAt,
+  lb,
   SAMPLE_LATEST,
   SAMPLE_START,
   segment,
   STOPS,
   totals,
+  tourProgress,
   visibility,
 } from "../tour";
 
@@ -17,6 +19,13 @@ describe("tour sample numbers", () => {
     expect(t.fatPct.toFixed(1)).toBe("17.0");
     expect(t.leanKg.toFixed(1)).toBe("64.5");
     expect(SAMPLE_LATEST.visceralG).toBe(340);
+  });
+
+  it("show weights in pounds, like the app", () => {
+    expect(lb(totals(SAMPLE_LATEST).leanKg)).toBe("142.1 lb");
+    expect(lb(SAMPLE_LATEST.regions.armR.lean)).toBe("8.9 lb");
+    const text = JSON.stringify(STOPS);
+    expect(text).not.toMatch(/\d kg\b/);
   });
 
   it("show the cut from the first sample scan", () => {
@@ -39,6 +48,18 @@ describe("tour interpolation", () => {
     expect(segment(1.1).e).toBe(0);
     expect(segment(1.9).e).toBe(1);
     expect(segment(STOPS.length - 1)).toEqual({ k: STOPS.length - 2, e: 1 });
+  });
+
+  it("never produces NaN before the window has a height", () => {
+    expect(tourProgress(0, 1000, 0)).toBe(0);
+    expect(tourProgress(NaN, 1000, 800)).toBe(0);
+    expect(tourProgress(-100, 800, 800)).toBe(0);
+    expect(segment(NaN)).toEqual({ k: 0, e: 0 });
+    expect(Number.isFinite(frameAt(NaN, centers, none).focus.dist)).toBe(true);
+  });
+
+  it("maps the end of the track to the last stop", () => {
+    expect(tourProgress(-1000, 2000, 1000)).toBe(STOPS.length - 1);
   });
 
   it("frames the stop's region and shows only its text", () => {
