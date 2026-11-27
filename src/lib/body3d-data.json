@@ -1,0 +1,188 @@
+{
+  "vertexCount": 13524,
+  "maskSlots": 8,
+  "scans": [
+    {
+      "date": "2026-03-14",
+      "bodyFatPct": 24.039694813142674,
+      "leanKg": 61.575625,
+      "fatKg": 20.5,
+      "visceralG": 620.0,
+      "regions": {
+        "leftArm": {
+          "leanKg": 3.65625,
+          "fatKg": 1.15,
+          "fatPct": 23.92717815344603
+        },
+        "rightArm": {
+          "leanKg": 3.75,
+          "fatKg": 1.15,
+          "fatPct": 23.469387755102037
+        },
+        "leftLeg": {
+          "leanKg": 10.319374999999999,
+          "fatKg": 3.3,
+          "fatPct": 24.23018677435639
+        },
+        "rightLeg": {
+          "leanKg": 10.45,
+          "fatKg": 3.3,
+          "fatPct": 24.0
+        },
+        "trunk": {
+          "leanKg": 29.5,
+          "fatKg": 10.6,
+          "fatPct": 26.433915211970074
+        }
+      },
+      "bands": {
+        "android": {
+          "leanKg": 3.2,
+          "fatKg": 2.0,
+          "fatPct": 38.46153846153846
+        },
+        "gynoid": {
+          "leanKg": 7.6,
+          "fatKg": 3.1,
+          "fatPct": 28.97196261682243
+        }
+      }
+    },
+    {
+      "date": "2026-07-02",
+      "bodyFatPct": 20.391486554363553,
+      "leanKg": 63.168125,
+      "fatKg": 17.0,
+      "visceralG": 470.0,
+      "regions": {
+        "leftArm": {
+          "leanKg": 3.8024999999999998,
+          "fatKg": 0.95,
+          "fatPct": 19.98947922146239
+        },
+        "rightArm": {
+          "leanKg": 3.9,
+          "fatKg": 0.95,
+          "fatPct": 19.587628865979383
+        },
+        "leftLeg": {
+          "leanKg": 10.615625,
+          "fatKg": 2.9,
+          "fatPct": 21.45664739884393
+        },
+        "rightLeg": {
+          "leanKg": 10.75,
+          "fatKg": 2.9,
+          "fatPct": 21.245421245421245
+        },
+        "trunk": {
+          "leanKg": 30.2,
+          "fatKg": 8.3,
+          "fatPct": 21.55844155844156
+        }
+      },
+      "bands": {
+        "android": {
+          "leanKg": 3.25,
+          "fatKg": 1.5,
+          "fatPct": 31.57894736842105
+        },
+        "gynoid": {
+          "leanKg": 7.8,
+          "fatKg": 2.7,
+          "fatPct": 25.714285714285715
+        }
+      }
+    },
+    {
+      "date": "2026-11-07",
+      "bodyFatPct": 17.042276186024413,
+      "leanKg": 64.46187499999999,
+      "fatKg": 13.9,
+      "visceralG": 340.0,
+      "regions": {
+        "leftArm": {
+          "leanKg": 3.9487499999999995,
+          "fatKg": 0.75,
+          "fatPct": 15.961691939345572
+        },
+        "rightArm": {
+          "leanKg": 4.05,
+          "fatKg": 0.75,
+          "fatPct": 15.625
+        },
+        "leftLeg": {
+          "leanKg": 10.813125,
+          "fatKg": 2.5,
+          "fatPct": 18.778461105112438
+        },
+        "rightLeg": {
+          "leanKg": 10.95,
+          "fatKg": 2.5,
+          "fatPct": 18.58736059479554
+        },
+        "trunk": {
+          "leanKg": 30.8,
+          "fatKg": 6.4,
+          "fatPct": 17.204301075268816
+        }
+      },
+      "bands": {
+        "android": {
+          "leanKg": 3.3,
+          "fatKg": 1.1,
+          "fatPct": 25.0
+        },
+        "gynoid": {
+          "leanKg": 8.0,
+          "fatKg": 2.3,
+          "fatPct": 22.330097087378636
+        }
+      }
+    }
+  ],
+  "legend": {
+    "fatPct": [
+      {
+        "value": 4.0,
+        "color": "#7cc4ff"
+      },
+      {
+        "value": 12.0,
+        "color": "#f6c35b"
+      },
+      {
+        "value": 25.0,
+        "color": "#d9541a"
+      }
+    ],
+    "fatChange": [
+      {
+        "value": -0.3,
+        "color": "#2b7bd6"
+      },
+      {
+        "value": 0.0,
+        "color": "#b8bdc4"
+      },
+      {
+        "value": 0.3,
+        "color": "#e8822a"
+      }
+    ],
+    "leanChange": [
+      {
+        "value": -0.05,
+        "color": "#e8822a"
+      },
+      {
+        "value": 0.0,
+        "color": "#b8bdc4"
+      },
+      {
+        "value": 0.05,
+        "color": "#2b7bd6"
+      }
+    ]
+  }
+}
