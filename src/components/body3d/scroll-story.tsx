@@ -350,22 +350,48 @@ export function ScrollStory() {
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
     // Inertial scrolling: wheel and trackpad steps glide instead of jumping.
     const lenis = reduce.matches ? null : new Lenis({ autoRaf: true, lerp: 0.085 });
-    // Snap: when scrolling settles between two stops, glide to the nearer one
-    // so a section is never left half on screen.
+    // Snap: when scrolling settles, glide to a stop. A small nudge past the
+    // current stop moves on to the next one in that direction, so sections lock
+    // in instead of drifting back. Input is ignored while it glides, so trackpad
+    // momentum can't fight the snap.
     let snapTimer = 0;
-    const snap = () => {
-      if (!lenis) return;
+    let snapping = false;
+    let snapStop = 0;
+    const progress = () => {
       const stopPx = window.innerHeight * STOP_SCREENS;
       const top = root.getBoundingClientRect().top + window.scrollY;
-      const p = (window.scrollY - top) / stopPx;
-      if (p < 0 || p > STOPS.length - 1) return;
-      const n = Math.round(p);
-      if (Math.abs(p - n) < 0.02) return;
-      lenis.scrollTo(top + n * stopPx, { duration: 0.9 });
+      return { p: stopPx > 0 ? (window.scrollY - top) / stopPx : 0, stopPx, top };
+    };
+    snapStop = Math.min(STOPS.length - 1, Math.max(0, Math.round(progress().p)));
+    const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2);
+    const snap = () => {
+      if (!lenis || snapping) return;
+      const { p, stopPx, top } = progress();
+      if (p < -0.05 || p > STOPS.length - 1 + 0.05) return;
+      const delta = p - snapStop;
+      let n = snapStop;
+      if (delta > 0.12) n = Math.max(snapStop + 1, Math.round(p));
+      else if (delta < -0.12) n = Math.min(snapStop - 1, Math.round(p));
+      n = Math.min(STOPS.length - 1, Math.max(0, n));
+      if (Math.abs(p - n) < 0.005) {
+        snapStop = n;
+        return;
+      }
+      snapping = true;
+      lenis.scrollTo(top + n * stopPx, {
+        duration: 0.85,
+        easing: easeInOut,
+        lock: true,
+        onComplete: () => {
+          snapStop = n;
+          snapping = false;
+        },
+      });
     };
     lenis?.on("scroll", () => {
+      if (snapping) return;
       window.clearTimeout(snapTimer);
-      snapTimer = window.setTimeout(snap, 140);
+      snapTimer = window.setTimeout(snap, 120);
     });
 
     let mobile = false;
@@ -467,7 +493,6 @@ export function ScrollStory() {
               pinText.current.textContent = stop.pinLabel ?? "";
               pinText.current.dataset.stop = stop.id;
             }
-            pinText.current.style.display = pinned ? "none" : "";
             // Keep the label on screen: near the right edge it goes left of the dot.
             const flip = anchor.x > vw - 200;
             pinText.current.style.left = flip ? "auto" : "";
