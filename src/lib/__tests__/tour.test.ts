@@ -9,7 +9,6 @@ import {
   segment,
   STOPS,
   totals,
-  tourProgress,
   visibility,
 } from "../tour";
 
@@ -43,23 +42,17 @@ describe("tour interpolation", () => {
   };
   const none = () => ({ x: 0, y: 0 });
 
-  it("holds still at each stop", () => {
+  it("eases from one stop to the next", () => {
     expect(segment(1)).toEqual({ k: 1, e: 0 });
-    expect(segment(1.1).e).toBe(0);
-    expect(segment(1.9).e).toBe(1);
+    expect(segment(1.5).e).toBeCloseTo(0.5);
+    expect(segment(1.02).e).toBe(0);
+    expect(segment(1.98).e).toBe(1);
     expect(segment(STOPS.length - 1)).toEqual({ k: STOPS.length - 2, e: 1 });
   });
 
-  it("never produces NaN before the window has a height", () => {
-    expect(tourProgress(0, 1000, 0)).toBe(0);
-    expect(tourProgress(NaN, 1000, 800)).toBe(0);
-    expect(tourProgress(-100, 800, 800)).toBe(0);
+  it("never produces NaN", () => {
     expect(segment(NaN)).toEqual({ k: 0, e: 0 });
     expect(Number.isFinite(frameAt(NaN, centers, none).focus.dist)).toBe(true);
-  });
-
-  it("maps the end of the track to the last stop", () => {
-    expect(tourProgress(-1000, 2000, 1000)).toBe(STOPS.length - 1);
   });
 
   it("frames the stop's region and shows only its text", () => {

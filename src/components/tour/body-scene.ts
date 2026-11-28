@@ -3,10 +3,6 @@
 // region masks. The camera flies close around a still body between stops.
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
-import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
-import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
-import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 
 import type { AnchorName, Frame, Mood } from "@/lib/tour";
 import { SLOT_COUNT } from "@/lib/tour";
@@ -18,12 +14,11 @@ type Look = {
   roughness: number;
   glow: number;
   rim: number;
-  bloom: number;
   floor: string;
 };
 
 // Colors mirror the app's Studio look (light) and its dark mode; dark adds
-// a rim light and bloom so the heatmap glows.
+// a rim light so the heatmap glows.
 const LOOKS: Record<Mood, Look> = {
   light: {
     background: 0xf4f5f7,
@@ -32,7 +27,6 @@ const LOOKS: Record<Mood, Look> = {
     roughness: 0.62,
     glow: 0,
     rim: 0,
-    bloom: 0,
     floor: "rgba(17,19,23,0.16)",
   },
   dark: {
@@ -40,9 +34,8 @@ const LOOKS: Record<Mood, Look> = {
     body: [0.56, 0.6, 0.66],
     accent: [0.49, 0.77, 1],
     roughness: 0.5,
-    glow: 0.14,
-    rim: 0.55,
-    bloom: 0.42,
+    glow: 0.2,
+    rim: 0.7,
     floor: "rgba(124,196,255,0.28)",
   },
 };
@@ -59,8 +52,6 @@ export class BodyScene {
   private key = new THREE.DirectionalLight(0xffffff, 2.2);
   private rimLight = new THREE.DirectionalLight(0x9fd4ff, 0);
   private hemi = new THREE.HemisphereLight(0xffffff, 0x8a8f98, 1.1);
-  private composer: EffectComposer;
-  private bloomPass: UnrealBloomPass;
   private floor: THREE.Mesh;
   private mesh?: THREE.Mesh;
   private material = new THREE.MeshStandardMaterial({ vertexColors: true, metalness: 0 });
@@ -97,7 +88,8 @@ export class BodyScene {
   constructor(canvas: HTMLCanvasElement) {
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      // Retina screens don't need MSAA, and it is the costliest part of a frame.
+      antialias: window.devicePixelRatio < 2,
       powerPreference: "high-performance",
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -162,12 +154,6 @@ export class BodyScene {
     this.floor.rotation.x = -Math.PI / 2;
     this.floor.position.y = -8.2;
     this.stage.add(this.floor);
-
-    this.composer = new EffectComposer(this.renderer);
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
-    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.42, 0.5, 0.72);
-    this.composer.addPass(this.bloomPass);
-    this.composer.addPass(new OutputPass());
 
     this.setMood("light");
   }
@@ -316,7 +302,6 @@ export class BodyScene {
     this.rimLight.intensity = mood === "dark" ? 1.6 : 0.5;
     this.hemi.intensity = mood === "dark" ? 0.55 : 1.1;
     this.key.intensity = mood === "dark" ? 1.8 : 2.2;
-    this.bloomPass.strength = this.look.bloom;
     (this.floor.material as THREE.MeshBasicMaterial).map = floorTexture(this.look.floor);
     (this.floor.material as THREE.MeshBasicMaterial).needsUpdate = true;
     this.uniforms.uBase.value.set(...this.look.body);
@@ -327,7 +312,6 @@ export class BodyScene {
     this.width = Math.max(1, w);
     this.height = Math.max(1, h);
     this.renderer.setSize(this.width, this.height, false);
-    this.composer.setSize(this.width, this.height);
     this.camera.aspect = this.width / this.height;
     this.camera.updateProjectionMatrix();
   }
@@ -380,8 +364,7 @@ export class BodyScene {
   }
 
   render() {
-    if (this.mood === "dark") this.composer.render();
-    else this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.camera);
   }
 
   /** Screen position (CSS px) of an anchor, and whether it faces the camera. */
@@ -406,7 +389,6 @@ export class BodyScene {
 
   dispose() {
     this.renderer.dispose();
-    this.composer.dispose();
   }
 }
 

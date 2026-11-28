@@ -1,9 +1,10 @@
 "use client";
 
-// The home page tour: a sticky 3D body that scrolling moves through the stops
-// in src/lib/tour.ts. The camera flies close along the body, numbers are
-// pinned to the body parts they belong to, and light or dark follows the
-// visitor's system setting.
+// The home page tour: a sticky 3D body over one full-screen section per stop
+// (src/lib/tour.ts). The browser's own scroll snapping moves one stop per
+// swipe or wheel flick (trackpad momentum included); when the stop changes,
+// the camera flies there in a short timed move. Numbers are pinned to the body
+// parts they belong to, and light or dark follows the system setting.
 import { useEffect, useRef, useState } from "react";
 
 import { screens } from "@/lib/screens";
@@ -14,7 +15,6 @@ import {
   SAMPLE_START,
   STOPS,
   totals,
-  tourProgress,
   visibility,
   type Mood,
   type Stop,
@@ -22,12 +22,15 @@ import {
 import { Phone } from "../phone";
 import type { BodyScene } from "./body-scene";
 
-const SEGMENT_VH = 170;
+/** Camera move between neighbouring stops, ms. The change stop plays slower. */
+const MOVE_MS = 750;
+const CHANGE_MS = 1600;
 /** Right edge (px) of the caption on desktop: left-10 + 26rem + a gap. */
 const CAPTION_RIGHT = 40 + 416 + 16;
 const START_FAT = totals(SAMPLE_START).fatPct;
 const LATEST_FAT = totals(SAMPLE_LATEST).fatPct;
 const CHANGE_START = STOPS.findIndex((s) => s.id === "change-start");
+const LAST = STOPS.length - 1;
 
 function useMedia(query: string) {
   const [matches, setMatches] = useState(false);
@@ -41,11 +44,15 @@ function useMedia(query: string) {
   return matches;
 }
 
-/** Scroll progress through the tour's track (see tourProgress). */
-function trackProgress(track: HTMLElement | null) {
-  if (!track) return 0;
-  const rect = track.getBoundingClientRect();
-  return tourProgress(rect.top, rect.height, window.innerHeight);
+/**
+ * The stop whose section fills the screen. 0 before the window reports a
+ * height (first frame, hidden tabs), never NaN.
+ */
+function activeStop(track: HTMLElement | null) {
+  const vh = window.innerHeight;
+  if (!track || !(vh > 0)) return 0;
+  const i = Math.round(-track.getBoundingClientRect().top / vh);
+  return Number.isFinite(i) ? Math.min(LAST, Math.max(0, i)) : 0;
 }
 
 export function Tour() {
@@ -66,7 +73,11 @@ export function Tour() {
   useEffect(() => {
     narrowRef.current = narrow;
   }, [narrow]);
-  useEffect(() => sceneRef.current?.setMood(mood), [mood, status]);
+  const redrawRef = useRef(() => {});
+  useEffect(() => {
+    sceneRef.current?.setMood(mood);
+    redrawRef.current();
+  }, [mood, status]);
 
   // Scene setup and the render loop.
   useEffect(() => {
@@ -77,9 +88,15 @@ export function Tour() {
     let spin = 0;
     let dragging = false;
     let lastX = 0;
-    let smoothP = 0;
-    let lastRawP = 0;
-    let lastT = 0;
+    // Shown progress: eases from `from` to the active stop over `duration`.
+    let shown = 0;
+    let from = 0;
+    let to = 0;
+    let startT = 0;
+    let duration = 0;
+    let lastShown = -1;
+    let lastSpin = 0;
+    let dirty = true;
     let cardWidths = new WeakMap<HTMLElement, number>();
     const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -93,36 +110,50 @@ export function Tour() {
       lastX = e.clientX;
     };
     const onUp = () => (dragging = false);
-
-    // Snap: once scrolling (trackpad momentum included) has stopped between
-    // two stops, glide to the nearest one so the page never rests half way.
-    let snapTimer = 0;
-    let touching = false;
-    const snap = () => {
+    // Mouse wheel and trackpad: one flick moves exactly one stop. The rest of
+    // the flick, trackpad momentum included, is ignored until it dies down,
+    // so a hard swipe can't skip stops or stop half way. Touch screens use
+    // the browser's own snapping (see the sections below).
+    let wanted: number | null = null;
+    let locked = false;
+    let moveEnd = 0;
+    let lastWheel = 0;
+    let acc = 0;
+    const goTo = (track: HTMLElement, index: number) => {
+      const top = window.scrollY + track.getBoundingClientRect().top;
+      const y = index > LAST ? top + track.offsetHeight : top + index * window.innerHeight;
+      wanted = Math.min(LAST, index);
+      window.scrollTo({ top: y, behavior: reduced ? "auto" : "smooth" });
+    };
+    const onWheel = (e: WheelEvent) => {
       const track = trackRef.current;
-      if (!track || dragging || touching || !window.innerHeight) return;
+      const vh = window.innerHeight;
+      if (!track || !(vh > 0) || e.ctrlKey) return;
       const rect = track.getBoundingClientRect();
-      const range = rect.height - window.innerHeight;
-      const scrolled = -rect.top;
-      if (!(range > 0) || scrolled <= 0 || scrolled >= range) return;
-      const p = (scrolled / range) * (STOPS.length - 1);
-      const target = Math.round(p);
-      if (Math.abs(p - target) < 0.004) return;
-      const delta = (target / (STOPS.length - 1)) * range - scrolled;
-      window.scrollTo({ top: window.scrollY + delta, behavior: reduced ? "auto" : "smooth" });
+      const dir = Math.sign(e.deltaY);
+      // At the top of the waitlist, a flick up goes back to the last stop.
+      const backFromWaitlist = dir < 0 && Math.abs(rect.bottom) < 2;
+      // Otherwise only while a tour stop fills the screen; the waitlist
+      // scrolls normally.
+      if (!backFromWaitlist && (rect.top > 1 || rect.bottom < vh - 1)) return;
+      const i = backFromWaitlist ? LAST + 1 : activeStop(track);
+      if (dir < 0 && i === 0 && rect.top > -1) return;
+      e.preventDefault();
+      const now = performance.now();
+      const gap = now - lastWheel;
+      lastWheel = now;
+      if (locked) {
+        if (now > moveEnd && gap > 180) locked = false;
+        else return;
+      }
+      acc = gap > 180 ? e.deltaY : acc + e.deltaY;
+      if (Math.abs(acc) < 25) return;
+      goTo(track, i + Math.sign(acc));
+      acc = 0;
+      locked = true;
+      moveEnd = now + 650;
     };
-    const onScroll = () => {
-      window.clearTimeout(snapTimer);
-      snapTimer = window.setTimeout(snap, 180);
-    };
-    const onTouchStart = () => (touching = true);
-    const onTouchEnd = () => {
-      touching = false;
-      onScroll();
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
+    window.addEventListener("wheel", onWheel, { passive: false });
     canvas.addEventListener("pointerdown", onDown);
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
@@ -138,24 +169,40 @@ export function Tour() {
     const tick = (t: number) => {
       raf = requestAnimationFrame(tick);
       if (!scene?.loaded) return;
-      const raw = trackProgress(trackRef.current);
-      // Frame-rate independent easing toward the scroll position.
-      const dt = lastT ? Math.min((t - lastT) / 1000, 0.25) : 0;
-      lastT = t;
-      smoothP += (raw - smoothP) * (reduced ? 1 : 1 - Math.exp(-dt * 3.5));
-      if (!Number.isFinite(smoothP) || Math.abs(smoothP - raw) < 0.0005) smoothP = raw;
-      // Scrolling again eases a dragged spin back to the stop's own angle.
-      if (!dragging && Math.abs(raw - lastRawP) > 0.0005) spin *= 0.9;
-      lastRawP = raw;
+      const settled = activeStop(trackRef.current);
+      if (wanted !== null && settled === wanted) wanted = null;
+      // Start flying as soon as a flick asks for a stop, not when the page
+      // has scrolled half way there.
+      const target = wanted ?? settled;
+      if (target !== to) {
+        // A new stop: fly there from wherever the camera is now.
+        from = shown;
+        to = target;
+        startT = t;
+        const steps = Math.abs(to - from);
+        const slow =
+          steps <= 1 && (to === CHANGE_START + 1 || Math.round(from) === CHANGE_START + 1);
+        duration = reduced ? 0 : (slow ? CHANGE_MS : MOVE_MS) * Math.sqrt(Math.max(steps, 0.4));
+        // The visitor's drag-spin eases back on the way.
+        spin *= 0.5;
+      }
+      const u = duration > 0 ? Math.min(1, (t - startT) / duration) : 1;
+      shown = from + (to - from) * u;
+      if (!dragging && u >= 1 && Math.abs(spin) > 0.0005) spin *= 0.92;
 
-      const frame = frameAt(smoothP, scene.centers, offset);
-      const idle = reduced ? 0 : 0.18 * Math.sin(t / 2400) * visibility(smoothP, 0);
-      scene.apply(frame, spin + idle);
+      // Nothing moved: skip the frame entirely.
+      if (!dirty && shown === lastShown && spin === lastSpin) return;
+      dirty = false;
+      lastShown = shown;
+      lastSpin = spin;
+
+      const frame = frameAt(shown, scene.centers, offset);
+      scene.apply(frame, spin);
       scene.render();
 
       const w = canvas.clientWidth;
       STOPS.forEach((stop, i) => {
-        const v = visibility(smoothP, i);
+        const v = visibility(shown, i);
         const cap = captionRefs.current[i];
         if (cap) {
           cap.style.opacity = String(v);
@@ -195,7 +242,7 @@ export function Tour() {
         });
       });
 
-      const tl = Math.max(visibility(smoothP, CHANGE_START), visibility(smoothP, CHANGE_START + 1));
+      const tl = Math.max(visibility(shown, CHANGE_START), visibility(shown, CHANGE_START + 1));
       if (timelineRef.current) {
         timelineRef.current.style.opacity = String(tl);
         timelineRef.current.style.visibility = tl > 0.01 ? "visible" : "hidden";
@@ -203,12 +250,14 @@ export function Tour() {
       if (timelineFill.current) timelineFill.current.style.width = `${frame.scan * 100}%`;
       if (timelineFat.current)
         timelineFat.current.textContent = `${(START_FAT + (LATEST_FAT - START_FAT) * frame.scan).toFixed(1)}%`;
-      if (hintRef.current) hintRef.current.style.opacity = String(visibility(smoothP, 0));
+      if (hintRef.current) hintRef.current.style.opacity = String(visibility(shown, 0));
     };
 
+    redrawRef.current = () => (dirty = true);
     const resize = () => {
       cardWidths = new WeakMap();
       scene?.resize(canvas.clientWidth, canvas.clientHeight);
+      dirty = true;
     };
     const ro = new ResizeObserver(resize);
 
@@ -222,7 +271,7 @@ export function Tour() {
         ro.observe(canvas);
         await scene.load("/models/body.glb");
         if (disposed) return;
-        smoothP = trackProgress(trackRef.current);
+        shown = from = to = activeStop(trackRef.current);
         setStatus("ready");
         raf = requestAnimationFrame(tick);
       })
@@ -236,21 +285,14 @@ export function Tour() {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
-      window.removeEventListener("scroll", onScroll);
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchend", onTouchEnd);
-      window.clearTimeout(snapTimer);
+      window.removeEventListener("wheel", onWheel);
       scene?.dispose();
       sceneRef.current = null;
     };
   }, []);
 
   return (
-    <div
-      ref={trackRef}
-      className="relative"
-      style={{ height: `${(STOPS.length - 1) * SEGMENT_VH + 100}vh` }}
-    >
+    <div ref={trackRef} className="tour relative">
       <div className="sticky top-0 h-[100svh] w-full overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -272,7 +314,7 @@ export function Tour() {
               >
                 <span className="absolute -top-1.5 -left-1.5 h-3 w-3 rounded-full border-2 border-bg bg-lean shadow-[0_0_0_4px_color-mix(in_srgb,var(--lean)_30%,transparent)]" />
                 <span className="pin-line absolute top-0 h-px bg-lean/70" />
-                <div className="pin-card absolute top-0 left-10 w-max max-w-[11rem] -translate-y-1/2 rounded-xl border border-outline bg-surface/90 px-3 py-2 shadow-lg backdrop-blur-md sm:max-w-[13rem] sm:px-3.5 sm:py-2.5">
+                <div className="pin-card absolute top-0 left-10 w-max max-w-[11rem] -translate-y-1/2 rounded-xl border border-outline bg-surface/95 px-3 py-2 shadow-lg sm:max-w-[13rem] sm:px-3.5 sm:py-2.5">
                   <p className="font-hud text-[10px] font-semibold uppercase tracking-[0.18em] text-ink-3">
                     {pin.label}
                   </p>
@@ -311,7 +353,7 @@ export function Tour() {
         {/* Timeline readout for the change stops. */}
         <div
           ref={timelineRef}
-          className="pointer-events-none absolute top-20 left-1/2 w-[min(22rem,88vw)] -translate-x-1/2 rounded-2xl border border-outline bg-surface/90 px-4 py-3 shadow-lg backdrop-blur-md"
+          className="pointer-events-none absolute top-20 left-1/2 w-[min(22rem,88vw)] -translate-x-1/2 rounded-2xl border border-outline bg-surface/95 px-4 py-3 shadow-lg"
           style={{ opacity: 0, visibility: "hidden" }}
         >
           <div className="flex items-center justify-between text-xs font-semibold text-ink-2">
@@ -344,6 +386,19 @@ export function Tour() {
           </div>
         )}
       </div>
+      {/* The track is one screen per stop: the sticky scene above takes the
+          first, this spacer the rest. */}
+      <div aria-hidden style={{ height: `${LAST * 100}svh` }} />
+      {/* One full-screen snap point per stop; the scene shows the active one. */}
+      <div className="pointer-events-none absolute inset-x-0 top-0">
+        {STOPS.map((stop) => (
+          <section
+            key={stop.id}
+            aria-label={stop.title}
+            className="h-[100svh] snap-start snap-always"
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -365,7 +420,7 @@ function Legend({ stop }: { stop: Stop }) {
 function Caption({ stop, first }: { stop: Stop; first: boolean }) {
   const Title = first ? "h1" : "h2";
   return (
-    <div className="rounded-2xl border border-outline bg-surface/85 p-4 shadow-xl backdrop-blur-md sm:p-5">
+    <div className="rounded-2xl border border-outline bg-surface/95 p-4 shadow-xl sm:p-5">
       <p className="font-hud text-[10px] font-semibold uppercase tracking-[0.25em] text-lean sm:text-xs">
         {stop.eyebrow}
       </p>
@@ -404,7 +459,7 @@ function AppEnding({ mood, narrow }: { mood: Mood; narrow: boolean }) {
         sizes="260px"
         className={narrow ? "w-[34%] shrink-0" : "h-[min(66vh,520px)] w-auto shrink-0"}
       />
-      <div className="pointer-events-auto rounded-2xl border border-outline bg-surface/90 p-4 shadow-xl backdrop-blur-md md:p-5">
+      <div className="pointer-events-auto rounded-2xl border border-outline bg-surface/95 p-4 shadow-xl md:p-5">
         <p className="font-hud text-[10px] font-semibold uppercase tracking-[0.25em] text-lean sm:text-xs">
           {last.eyebrow}
         </p>

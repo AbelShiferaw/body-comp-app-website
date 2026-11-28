@@ -9,7 +9,10 @@ export default function Home() {
       <SiteHeader overlay />
       <main>
         <Tour />
-        <section id="waitlist" className="scroll-mt-20 border-t border-outline bg-surface-high/50">
+        <section
+          id="waitlist"
+          className="snap-start scroll-mt-0 border-t border-outline bg-surface-high/50 pt-16"
+        >
           <div className="mx-auto grid max-w-6xl gap-10 px-4 py-20 sm:px-6 lg:grid-cols-2">
             <div className="max-w-lg">
               <p className="font-hud text-xs font-semibold uppercase tracking-[0.25em] text-lean">
@@ -34,7 +37,9 @@ export default function Home() {
           </div>
         </section>
       </main>
-      <SiteFooter />
+      <div className="snap-end">
+        <SiteFooter />
+      </div>
     </>
   );
 }

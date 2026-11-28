@@ -116,3 +116,8 @@ body {
 .legal strong {
   color: var(--ink);
 }
+
+/* Home page tour: one stop per swipe, using the browser's own snapping. */
+html:has(.tour) {
+  scroll-snap-type: y mandatory;
+}

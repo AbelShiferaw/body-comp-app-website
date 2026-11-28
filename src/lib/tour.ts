@@ -373,19 +373,7 @@ const clamp01 = (x: number) => Math.min(1, Math.max(0, x));
 const smooth = (x: number) => x * x * (3 - 2 * x);
 
 /** Share of each scroll segment spent holding still at a stop. */
-export const HOLD = 0.16;
-
-/**
- * Raw scroll progress through the tour, 0 to STOPS.length - 1, from the
- * track's top and height and the window height. Before the window reports a
- * height (first frame, hidden tabs) it is 0, never NaN.
- */
-export function tourProgress(trackTop: number, trackHeight: number, viewport: number) {
-  const range = trackHeight - viewport;
-  if (!(viewport > 0) || !(range > 0)) return 0;
-  const p = (Math.min(Math.max(-trackTop, 0), range) / range) * (STOPS.length - 1);
-  return Number.isFinite(p) ? p : 0;
-}
+export const HOLD = 0.04;
 
 /** Eased progress between stop k and k+1 for raw scroll progress p. */
 export function segment(p: number, count = STOPS.length) {
